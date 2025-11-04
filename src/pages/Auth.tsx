@@ -75,8 +75,8 @@ const Auth = () => {
               <Scissors className="h-8 w-8 text-primary-foreground" />
             </div>
           </div>
-          <CardTitle className="text-3xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-            Barbearia Premium
+          <CardTitle className="text-3xl font-bold text-foreground">
+            Barbearia Marco Túlio
           </CardTitle>
           <CardDescription className="text-muted-foreground">
             {isSignUp ? "Criar nova conta" : "Faça login para acessar o sistema"}

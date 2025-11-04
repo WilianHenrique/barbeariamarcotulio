@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { LogOut, Calendar, Clock, User, Scissors } from "lucide-react";
+import { LogOut, Calendar, Clock, User, Scissors, Settings as SettingsIcon } from "lucide-react";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -119,26 +119,36 @@ const Dashboard = () => {
         {/* Header */}
         <Card className="bg-gradient-to-r from-card to-card/80 border-border shadow-xl">
           <CardHeader>
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between flex-wrap gap-4">
               <div className="flex items-center gap-4">
-                <div className="bg-primary rounded-full p-3">
+                <div className="bg-primary rounded-full p-3 shadow-lg">
                   <Scissors className="h-6 w-6 text-primary-foreground" />
                 </div>
                 <div>
                   <CardTitle className="text-3xl font-bold text-foreground">
-                    Sistema de Agendamentos
+                    Barbearia Marco Túlio
                   </CardTitle>
-                  <p className="text-muted-foreground">Gerenciamento de notificações</p>
+                  <p className="text-muted-foreground">Sistema de Agendamentos</p>
                 </div>
               </div>
-              <Button
-                onClick={handleLogout}
-                variant="outline"
-                className="border-border hover:bg-secondary"
-              >
-                <LogOut className="mr-2 h-4 w-4" />
-                Sair
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  onClick={() => navigate("/settings")}
+                  variant="outline"
+                  className="border-border hover:bg-secondary"
+                >
+                  <SettingsIcon className="mr-2 h-4 w-4" />
+                  Configurações
+                </Button>
+                <Button
+                  onClick={handleLogout}
+                  variant="outline"
+                  className="border-border hover:bg-secondary"
+                >
+                  <LogOut className="mr-2 h-4 w-4" />
+                  Sair
+                </Button>
+              </div>
             </div>
           </CardHeader>
         </Card>
