@@ -86,6 +86,7 @@ const Settings = () => {
               <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
                 <li>Método: <strong>POST</strong></li>
                 <li>Content-Type: <strong>application/json</strong></li>
+                <li>Autenticação: <strong>Não é necessária</strong></li>
                 <li>Envie os dados no formato especificado na documentação</li>
               </ul>
             </div>
