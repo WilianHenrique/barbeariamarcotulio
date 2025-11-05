@@ -3,27 +3,20 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Copy, Check, ArrowLeft } from "lucide-react";
+import { Copy, Check, ArrowLeft, Bell } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 
 const Settings = () => {
   const navigate = useNavigate();
   const [copiedWebhook, setCopiedWebhook] = useState(false);
-  const [copiedNotifications, setCopiedNotifications] = useState(false);
 
   const webhookUrl = "https://dimwyqenkirksoatesdq.supabase.co/functions/v1/webhook-agendamentos";
-  const notificationsUrl = "https://dimwyqenkirksoatesdq.supabase.co/functions/v1/processar-notificacoes";
 
-  const copyToClipboard = (text: string, type: 'webhook' | 'notifications') => {
+  const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
-    if (type === 'webhook') {
-      setCopiedWebhook(true);
-      setTimeout(() => setCopiedWebhook(false), 2000);
-    } else {
-      setCopiedNotifications(true);
-      setTimeout(() => setCopiedNotifications(false), 2000);
-    }
+    setCopiedWebhook(true);
+    setTimeout(() => setCopiedWebhook(false), 2000);
     toast.success("URL copiada para a área de transferência!");
   };
 
@@ -69,7 +62,7 @@ const Settings = () => {
                 <Button
                   size="icon"
                   variant="outline"
-                  onClick={() => copyToClipboard(webhookUrl, 'webhook')}
+                  onClick={() => copyToClipboard(webhookUrl)}
                   className="shrink-0"
                 >
                   {copiedWebhook ? (
@@ -116,57 +109,32 @@ const Settings = () => {
           </CardContent>
         </Card>
 
-        {/* Endpoint de Notificações */}
+        {/* Informação sobre Notificações Automáticas */}
         <Card className="border-border shadow-md">
           <CardHeader>
-            <CardTitle className="text-foreground">Endpoint de Processamento de Notificações</CardTitle>
-            <CardDescription className="text-muted-foreground">
-              Configure um cron job para chamar este endpoint periodicamente (sugestão: a cada 5-10 minutos)
-            </CardDescription>
+            <CardTitle className="text-foreground flex items-center gap-2">
+              <Bell className="h-5 w-5 text-primary" />
+              Sistema de Notificações Automáticas
+            </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="notifications-url" className="text-foreground">URL de Notificações</Label>
-              <div className="flex gap-2">
-                <Input
-                  id="notifications-url"
-                  value={notificationsUrl}
-                  readOnly
-                  className="font-mono text-sm bg-secondary"
-                />
-                <Button
-                  size="icon"
-                  variant="outline"
-                  onClick={() => copyToClipboard(notificationsUrl, 'notifications')}
-                  className="shrink-0"
-                >
-                  {copiedNotifications ? (
-                    <Check className="h-4 w-4 text-green-600" />
-                  ) : (
-                    <Copy className="h-4 w-4" />
-                  )}
-                </Button>
+          <CardContent>
+            <div className="space-y-3">
+              <div className="bg-green-50 border border-green-200 p-4 rounded-lg">
+                <p className="text-sm font-semibold text-green-900 mb-2">✅ Configuração Automática Ativada</p>
+                <ul className="text-sm text-green-800 space-y-1 list-disc list-inside">
+                  <li>O sistema verifica automaticamente os agendamentos a cada 10 minutos</li>
+                  <li>Notificações são enviadas automaticamente 24 horas antes do horário agendado</li>
+                  <li>Notificações são enviadas automaticamente 1 hora antes do horário agendado</li>
+                  <li>Não é necessário configurar nada manualmente - tudo funciona automaticamente!</li>
+                </ul>
               </div>
-            </div>
-
-            <div className="bg-secondary p-4 rounded-lg space-y-2">
-              <p className="text-sm font-semibold text-foreground">Como funciona:</p>
-              <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
-                <li>Este endpoint verifica agendamentos pendentes</li>
-                <li>Envia notificação 24h antes do agendamento</li>
-                <li>Envia notificação 1h antes do agendamento</li>
-                <li>Dispara para: <code className="bg-white px-1 rounded text-xs">https://automacoes.federalassociadoscadastro.com/webhook/agendamentos_marco_tulio</code></li>
-              </ul>
-            </div>
-
-            <div className="bg-amber-50 border border-amber-200 p-4 rounded-lg">
-              <p className="text-sm font-semibold text-amber-900 mb-2">⚙️ Configurar Cron Job:</p>
-              <p className="text-sm text-amber-800 mb-2">
-                Você pode usar serviços como <strong>cron-job.org</strong> ou <strong>EasyCron</strong> para chamar este endpoint automaticamente.
-              </p>
-              <p className="text-xs text-amber-700">
-                Sugestão: Execute a cada 10 minutos para garantir que as notificações sejam enviadas no momento certo.
-              </p>
+              
+              <div className="bg-secondary p-4 rounded-lg">
+                <p className="text-sm font-semibold text-foreground mb-2">Destino das Notificações:</p>
+                <p className="text-xs text-muted-foreground font-mono break-all">
+                  https://automacoes.federalassociadoscadastro.com/webhook/agendamentos_marco_tulio
+                </p>
+              </div>
             </div>
           </CardContent>
         </Card>
