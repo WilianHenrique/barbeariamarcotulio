@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { LogOut, Calendar, Clock, User, Scissors, Settings as SettingsIcon } from "lucide-react";
+import { LogOut, Calendar, Clock, User, Scissors, Settings as SettingsIcon, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -81,6 +81,24 @@ const Dashboard = () => {
   const handleLogout = async () => {
     await supabase.auth.signOut();
     navigate("/auth");
+  };
+
+  const handleDelete = async (id: string, nomeCliente: string) => {
+    if (!confirm(`Tem certeza que deseja excluir o agendamento de ${nomeCliente}?`)) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('agendamentos')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+      toast.success("Agendamento excluído com sucesso");
+    } catch (error: any) {
+      toast.error("Erro ao excluir agendamento");
+    }
   };
 
   const getTempoRestante = (datetime: string) => {
@@ -212,18 +230,19 @@ const Dashboard = () => {
                   <TableHead className="text-muted-foreground">Serviço</TableHead>
                   <TableHead className="text-muted-foreground">Tempo Restante</TableHead>
                   <TableHead className="text-muted-foreground">Status Notificação</TableHead>
+                  <TableHead className="text-muted-foreground">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {isLoading ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center text-muted-foreground">
+                    <TableCell colSpan={7} className="text-center text-muted-foreground">
                       Carregando...
                     </TableCell>
                   </TableRow>
                 ) : agendamentos.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center text-muted-foreground">
+                    <TableCell colSpan={7} className="text-center text-muted-foreground">
                       Nenhum agendamento encontrado
                     </TableCell>
                   </TableRow>
@@ -244,6 +263,16 @@ const Dashboard = () => {
                         {getTempoRestante(agendamento.datetime_start)}
                       </TableCell>
                       <TableCell>{getNotificacaoStatus(agendamento)}</TableCell>
+                      <TableCell>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleDelete(agendamento.id, agendamento.nome_cliente)}
+                          className="hover:bg-destructive/10 hover:text-destructive"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
                     </TableRow>
                   ))
                 )}

@@ -2,3 +2,6 @@ project_id = "dimwyqenkirksoatesdq"
 
 [functions.webhook-agendamentos]
 verify_jwt = false
+
+[functions.processar-notificacoes]
+verify_jwt = false
