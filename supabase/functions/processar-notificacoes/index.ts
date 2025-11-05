@@ -22,24 +22,41 @@ serve(async (req) => {
     );
 
     const agora = new Date();
-    const em24Horas = new Date(agora.getTime() + 24 * 60 * 60 * 1000);
-    const em1Hora = new Date(agora.getTime() + 60 * 60 * 1000);
+    
+    // Calcular janelas de tempo (de agora até 24h15min e até 1h15min no futuro)
+    // Adicionamos 15 minutos de margem para garantir que não perdemos notificações
+    const inicio24h = new Date(agora.getTime() + 23 * 60 * 60 * 1000 + 45 * 60 * 1000); // 23h45min
+    const fim24h = new Date(agora.getTime() + 24 * 60 * 60 * 1000 + 15 * 60 * 1000); // 24h15min
+    
+    const inicio1h = new Date(agora.getTime() + 45 * 60 * 1000); // 45min
+    const fim1h = new Date(agora.getTime() + 1 * 60 * 60 * 1000 + 15 * 60 * 1000); // 1h15min
+
+    console.log(`Buscando notificações 24h entre ${inicio24h.toISOString()} e ${fim24h.toISOString()}`);
+    console.log(`Buscando notificações 1h entre ${inicio1h.toISOString()} e ${fim1h.toISOString()}`);
 
     // Buscar agendamentos que precisam de notificação de 24h
-    const { data: agendamentos24h } = await supabaseClient
+    const { data: agendamentos24h, error: error24h } = await supabaseClient
       .from('agendamentos')
       .select('*')
-      .lte('datetime_start', em24Horas.toISOString())
-      .gt('datetime_start', agora.toISOString())
+      .gte('datetime_start', inicio24h.toISOString())
+      .lte('datetime_start', fim24h.toISOString())
       .eq('notificacao_24h_enviada', false);
 
+    if (error24h) {
+      console.error("Erro ao buscar agendamentos 24h:", error24h);
+    }
+
     // Buscar agendamentos que precisam de notificação de 1h
-    const { data: agendamentos1h } = await supabaseClient
+    const { data: agendamentos1h, error: error1h } = await supabaseClient
       .from('agendamentos')
       .select('*')
-      .lte('datetime_start', em1Hora.toISOString())
-      .gt('datetime_start', agora.toISOString())
+      .gte('datetime_start', inicio1h.toISOString())
+      .lte('datetime_start', fim1h.toISOString())
       .eq('notificacao_1h_enviada', false);
+
+    if (error1h) {
+      console.error("Erro ao buscar agendamentos 1h:", error1h);
+    }
 
     let notificacoesEnviadas = 0;
 
