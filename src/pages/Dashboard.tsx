@@ -30,10 +30,13 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const [agendamentos, setAgendamentos] = useState<Agendamento[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-
+  const [now, setNow] = useState(Date.now());
   useEffect(() => {
     checkAuth();
     loadAgendamentos();
+
+    // Atualiza a cada segundo para re-renderizar o tempo restante em tempo real
+    const interval = setInterval(() => setNow(Date.now()), 1000);
 
     const channel = supabase
       .channel('agendamentos-changes')
@@ -51,6 +54,7 @@ const Dashboard = () => {
       .subscribe();
 
     return () => {
+      clearInterval(interval);
       supabase.removeChannel(channel);
     };
   }, []);
@@ -95,6 +99,8 @@ const Dashboard = () => {
         .eq('id', id);
 
       if (error) throw error;
+      // Remover imediatamente da lista para feedback instantâneo
+      setAgendamentos((prev) => prev.filter((a) => a.id !== id));
       toast.success("Agendamento excluído com sucesso");
     } catch (error: any) {
       toast.error("Erro ao excluir agendamento");
@@ -102,16 +108,20 @@ const Dashboard = () => {
   };
 
   const getTempoRestante = (datetime: string) => {
-    const now = new Date();
-    const agendamento = new Date(datetime);
-    const diff = agendamento.getTime() - now.getTime();
-    
-    if (diff < 0) return "Passou";
-    
-    const horas = Math.floor(diff / (1000 * 60 * 60));
-    const minutos = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-    
-    return `${horas}h ${minutos}m`;
+    const target = new Date(datetime).getTime();
+    const diff = target - now; // usa estado atualizado a cada segundo
+
+    if (diff <= 0) return "0s";
+
+    const totalSeconds = Math.floor(diff / 1000);
+    const horas = Math.floor(totalSeconds / 3600);
+    const minutos = Math.floor((totalSeconds % 3600) / 60);
+    const segundos = totalSeconds % 60;
+
+    const s = segundos.toString().padStart(2, '0');
+    if (horas > 0) return `${horas}h ${minutos}m ${s}s`;
+    if (minutos > 0) return `${minutos}m ${s}s`;
+    return `${s}s`;
   };
 
   const getNotificacaoStatus = (agendamento: Agendamento) => {
