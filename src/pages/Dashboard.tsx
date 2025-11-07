@@ -125,21 +125,59 @@ const Dashboard = () => {
   };
 
   const getNotificacaoStatus = (agendamento: Agendamento) => {
-    const now = new Date();
     const datetime = new Date(agendamento.datetime_start);
-    const diff = datetime.getTime() - now.getTime();
+    const diff = datetime.getTime() - now;
     const horasRestantes = diff / (1000 * 60 * 60);
 
-    if (horasRestantes < 1 && !agendamento.notificacao_1h_enviada) {
-      return <Badge variant="destructive">Notificação 1h pendente</Badge>;
-    } else if (horasRestantes < 24 && !agendamento.notificacao_24h_enviada) {
-      return <Badge className="bg-accent">Notificação 24h pendente</Badge>;
-    } else if (agendamento.notificacao_1h_enviada) {
+    // Se ambas notificações já foram enviadas
+    if (agendamento.notificacao_24h_enviada && agendamento.notificacao_1h_enviada) {
       return <Badge variant="secondary">Notificações enviadas</Badge>;
-    } else {
-      return <Badge variant="outline">Aguardando</Badge>;
     }
+
+    // Se falta menos de 1h e notificação de 1h ainda não foi enviada
+    if (horasRestantes < 1 && !agendamento.notificacao_1h_enviada) {
+      const tempoAte1h = datetime.getTime() - now;
+      if (tempoAte1h <= 0) return <Badge variant="destructive">Processando...</Badge>;
+      
+      const totalSeconds = Math.floor(tempoAte1h / 1000);
+      const minutos = Math.floor(totalSeconds / 60);
+      const segundos = totalSeconds % 60;
+      
+      return (
+        <Badge variant="destructive" className="font-mono">
+          Notificação em: {minutos}m {segundos.toString().padStart(2, '0')}s
+        </Badge>
+      );
+    }
+
+    // Se falta menos de 24h e notificação de 24h ainda não foi enviada
+    if (horasRestantes < 24 && !agendamento.notificacao_24h_enviada) {
+      const tempoAte24h = datetime.getTime() - 24 * 60 * 60 * 1000 - now;
+      if (tempoAte24h <= 0) return <Badge className="bg-accent">Processando...</Badge>;
+      
+      const totalSeconds = Math.floor(tempoAte24h / 1000);
+      const horas = Math.floor(totalSeconds / 3600);
+      const minutos = Math.floor((totalSeconds % 3600) / 60);
+      const segundos = totalSeconds % 60;
+      
+      return (
+        <Badge className="bg-accent font-mono">
+          Notificação em: {horas}h {minutos}m {segundos.toString().padStart(2, '0')}s
+        </Badge>
+      );
+    }
+
+    // Se falta mais de 24h
+    return <Badge variant="outline">Aguardando</Badge>;
   };
+
+  const agendamentosPendentes = agendamentos.filter(
+    a => !(a.notificacao_24h_enviada && a.notificacao_1h_enviada)
+  );
+
+  const agendamentosRealizados = agendamentos.filter(
+    a => a.notificacao_24h_enviada && a.notificacao_1h_enviada
+  );
 
   return (
     <div className="min-h-screen bg-background p-6">
@@ -187,8 +225,8 @@ const Dashboard = () => {
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-muted-foreground">Total Agendamentos</p>
-                  <p className="text-3xl font-bold text-foreground">{agendamentos.length}</p>
+                  <p className="text-sm text-muted-foreground">Agendamentos Pendentes</p>
+                  <p className="text-3xl font-bold text-foreground">{agendamentosPendentes.length}</p>
                 </div>
                 <Calendar className="h-8 w-8 text-primary" />
               </div>
@@ -200,7 +238,7 @@ const Dashboard = () => {
                 <div>
                   <p className="text-sm text-muted-foreground">Próximas 24h</p>
                   <p className="text-3xl font-bold text-foreground">
-                    {agendamentos.filter(a => {
+                    {agendamentosPendentes.filter(a => {
                       const diff = new Date(a.datetime_start).getTime() - new Date().getTime();
                       return diff > 0 && diff < 24 * 60 * 60 * 1000;
                     }).length}
@@ -214,9 +252,9 @@ const Dashboard = () => {
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-muted-foreground">Pendentes</p>
+                  <p className="text-sm text-muted-foreground">Realizados</p>
                   <p className="text-3xl font-bold text-foreground">
-                    {agendamentos.filter(a => !a.notificacao_1h_enviada).length}
+                    {agendamentosRealizados.length}
                   </p>
                 </div>
                 <User className="h-8 w-8 text-primary" />
@@ -225,10 +263,10 @@ const Dashboard = () => {
           </Card>
         </div>
 
-        {/* Tabela de Agendamentos */}
+        {/* Tabela de Agendamentos Pendentes */}
         <Card className="bg-card border-border">
           <CardHeader>
-            <CardTitle className="text-foreground">Agendamentos</CardTitle>
+            <CardTitle className="text-foreground">Agendamentos Pendentes</CardTitle>
           </CardHeader>
           <CardContent>
             <Table>
@@ -250,14 +288,14 @@ const Dashboard = () => {
                       Carregando...
                     </TableCell>
                   </TableRow>
-                ) : agendamentos.length === 0 ? (
+                ) : agendamentosPendentes.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={7} className="text-center text-muted-foreground">
-                      Nenhum agendamento encontrado
+                      Nenhum agendamento pendente
                     </TableCell>
                   </TableRow>
                 ) : (
-                  agendamentos.map((agendamento) => (
+                  agendamentosPendentes.map((agendamento) => (
                     <TableRow key={agendamento.id} className="border-border hover:bg-secondary/50">
                       <TableCell className="font-medium text-foreground">
                         {agendamento.nome_cliente}
@@ -290,6 +328,58 @@ const Dashboard = () => {
             </Table>
           </CardContent>
         </Card>
+
+        {/* Tabela de Agendamentos Realizados */}
+        {agendamentosRealizados.length > 0 && (
+          <Card className="bg-card border-border">
+            <CardHeader>
+              <CardTitle className="text-foreground">Agendamentos Realizados</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow className="border-border hover:bg-secondary/50">
+                    <TableHead className="text-muted-foreground">Cliente</TableHead>
+                    <TableHead className="text-muted-foreground">Data</TableHead>
+                    <TableHead className="text-muted-foreground">Horário</TableHead>
+                    <TableHead className="text-muted-foreground">Serviço</TableHead>
+                    <TableHead className="text-muted-foreground">Status</TableHead>
+                    <TableHead className="text-muted-foreground">Ações</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {agendamentosRealizados.map((agendamento) => (
+                    <TableRow key={agendamento.id} className="border-border hover:bg-secondary/50">
+                      <TableCell className="font-medium text-foreground">
+                        {agendamento.nome_cliente}
+                      </TableCell>
+                      <TableCell className="text-foreground">
+                        {agendamento.dia_agendado_formatado}
+                      </TableCell>
+                      <TableCell className="text-foreground">
+                        {agendamento.hora_agendada} - {agendamento.hora_final}
+                      </TableCell>
+                      <TableCell className="text-foreground">{agendamento.servico}</TableCell>
+                      <TableCell>
+                        <Badge variant="secondary">Notificações enviadas</Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleDelete(agendamento.id, agendamento.nome_cliente)}
+                          className="hover:bg-destructive/10 hover:text-destructive"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </div>
   );
