@@ -26,30 +26,30 @@ const Settings = () => {
         <Button
           variant="ghost"
           onClick={() => navigate("/")}
-          className="mb-4"
+          className="mb-4 hover:bg-primary/10 hover:text-primary"
         >
           <ArrowLeft className="mr-2 h-4 w-4" />
           Voltar ao Dashboard
         </Button>
 
-        <Card className="border-border shadow-lg">
+        <Card className="barber-card border-primary/30 shadow-glow">
           <CardHeader>
-            <CardTitle className="text-2xl text-foreground">Configurações do Sistema</CardTitle>
-            <CardDescription className="text-muted-foreground">
+            <CardTitle className="text-3xl font-display text-primary">Configurações do Sistema</CardTitle>
+            <CardDescription className="text-muted-foreground text-base">
               Endpoints e configurações de integração
             </CardDescription>
           </CardHeader>
         </Card>
 
         {/* Webhook de Recepção */}
-        <Card className="border-border shadow-md">
-          <CardHeader>
-            <CardTitle className="text-foreground">Endpoint de Recepção (N8N)</CardTitle>
+        <Card className="barber-card border-primary/20">
+          <CardHeader className="border-b border-primary/10">
+            <CardTitle className="text-xl font-display text-primary">Endpoint de Recepção (N8N)</CardTitle>
             <CardDescription className="text-muted-foreground">
               Use esta URL no seu fluxo N8N para enviar os dados dos agendamentos
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-4 pt-6">
             <div className="space-y-2">
               <Label htmlFor="webhook-url" className="text-foreground">URL do Webhook</Label>
               <div className="flex gap-2">
@@ -57,16 +57,16 @@ const Settings = () => {
                   id="webhook-url"
                   value={webhookUrl}
                   readOnly
-                  className="font-mono text-sm bg-secondary"
+                  className="font-mono text-sm bg-secondary border-primary/20"
                 />
                 <Button
                   size="icon"
                   variant="outline"
                   onClick={() => copyToClipboard(webhookUrl)}
-                  className="shrink-0"
+                  className="shrink-0 border-primary/30 hover:bg-primary/10 hover:border-primary/50"
                 >
                   {copiedWebhook ? (
-                    <Check className="h-4 w-4 text-green-600" />
+                    <Check className="h-4 w-4 text-primary" />
                   ) : (
                     <Copy className="h-4 w-4" />
                   )}
@@ -74,19 +74,19 @@ const Settings = () => {
               </div>
             </div>
 
-            <div className="bg-secondary p-4 rounded-lg space-y-2">
-              <p className="text-sm font-semibold text-foreground">Configuração no N8N:</p>
+            <div className="bg-secondary/50 border border-primary/20 p-4 rounded-lg space-y-2">
+              <p className="text-sm font-semibold text-primary">Configuração no N8N:</p>
               <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
-                <li>Método: <strong>POST</strong></li>
-                <li>Content-Type: <strong>application/json</strong></li>
-                <li>Autenticação: <strong>Não é necessária</strong></li>
+                <li>Método: <strong className="text-foreground">POST</strong></li>
+                <li>Content-Type: <strong className="text-foreground">application/json</strong></li>
+                <li>Autenticação: <strong className="text-foreground">Não é necessária</strong></li>
                 <li>Envie os dados no formato especificado na documentação</li>
               </ul>
             </div>
 
-            <div className="bg-blue-50 border border-blue-200 p-4 rounded-lg">
-              <p className="text-sm font-semibold text-blue-900 mb-2">📋 Formato esperado:</p>
-              <pre className="text-xs bg-white p-3 rounded border overflow-x-auto text-blue-900">
+            <div className="bg-primary/5 border border-primary/30 p-4 rounded-lg">
+              <p className="text-sm font-semibold text-primary mb-2">📋 Formato esperado:</p>
+              <pre className="text-xs bg-background p-3 rounded border border-primary/20 overflow-x-auto text-foreground">
 {`[
   {
     "id_evento": "abc123",
@@ -110,18 +110,18 @@ const Settings = () => {
         </Card>
 
         {/* Informação sobre Notificações Automáticas */}
-        <Card className="border-border shadow-md">
-          <CardHeader>
-            <CardTitle className="text-foreground flex items-center gap-2">
-              <Bell className="h-5 w-5 text-primary" />
+        <Card className="barber-card border-primary/20">
+          <CardHeader className="border-b border-primary/10">
+            <CardTitle className="text-xl font-display text-primary flex items-center gap-2">
+              <Bell className="h-5 w-5" />
               Sistema de Notificações Automáticas
             </CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-6">
             <div className="space-y-3">
-              <div className="bg-green-50 border border-green-200 p-4 rounded-lg">
-                <p className="text-sm font-semibold text-green-900 mb-2">✅ Configuração Automática Ativada</p>
-                <ul className="text-sm text-green-800 space-y-1 list-disc list-inside">
+              <div className="bg-primary/5 border border-primary/30 p-4 rounded-lg">
+                <p className="text-sm font-semibold text-primary mb-2">✅ Configuração Automática Ativada</p>
+                <ul className="text-sm text-foreground space-y-1 list-disc list-inside">
                   <li>O sistema verifica automaticamente os agendamentos a cada 10 minutos</li>
                   <li>Notificações são enviadas automaticamente 24 horas antes do horário agendado</li>
                   <li>Notificações são enviadas automaticamente 1 hora antes do horário agendado</li>
@@ -129,8 +129,8 @@ const Settings = () => {
                 </ul>
               </div>
               
-              <div className="bg-secondary p-4 rounded-lg">
-                <p className="text-sm font-semibold text-foreground mb-2">Destino das Notificações:</p>
+              <div className="bg-secondary/50 border border-primary/20 p-4 rounded-lg">
+                <p className="text-sm font-semibold text-primary mb-2">Destino das Notificações:</p>
                 <p className="text-xs text-muted-foreground font-mono break-all">
                   https://automacoes.federalassociadoscadastro.com/webhook/agendamentos_marco_tulio
                 </p>
@@ -140,22 +140,22 @@ const Settings = () => {
         </Card>
 
         {/* Informações do Sistema */}
-        <Card className="border-border shadow-md">
-          <CardHeader>
-            <CardTitle className="text-foreground">Informações do Sistema</CardTitle>
+        <Card className="barber-card border-primary/20">
+          <CardHeader className="border-b border-primary/10">
+            <CardTitle className="text-xl font-display text-primary">Informações do Sistema</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="flex justify-between py-2 border-b border-border">
+          <CardContent className="space-y-3 pt-6">
+            <div className="flex justify-between py-2 border-b border-primary/10">
               <span className="text-muted-foreground">Versão:</span>
               <span className="font-semibold text-foreground">1.0.0</span>
             </div>
-            <div className="flex justify-between py-2 border-b border-border">
+            <div className="flex justify-between py-2 border-b border-primary/10">
               <span className="text-muted-foreground">Barbearia:</span>
-              <span className="font-semibold text-foreground">Marco Túlio</span>
+              <span className="font-semibold text-primary">Marco Túlio</span>
             </div>
             <div className="flex justify-between py-2">
               <span className="text-muted-foreground">Status:</span>
-              <span className="font-semibold text-green-600">✓ Operacional</span>
+              <span className="font-semibold text-primary">✓ Operacional</span>
             </div>
           </CardContent>
         </Card>

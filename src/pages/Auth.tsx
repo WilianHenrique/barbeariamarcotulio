@@ -66,26 +66,26 @@ const Auth = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
-      <div className="absolute inset-0 bg-gradient-to-br from-background via-card to-background" />
+      <div className="absolute inset-0 bg-gradient-to-br from-background via-card/50 to-background" />
       
-      <Card className="w-full max-w-md relative backdrop-blur-sm bg-card/90 border-border shadow-2xl">
+      <Card className="w-full max-w-md relative backdrop-blur-sm barber-card border-primary/30 shadow-glow">
         <CardHeader className="space-y-4 text-center">
           <div className="flex justify-center">
-            <div className="bg-primary rounded-full p-4 shadow-lg">
-              <Scissors className="h-8 w-8 text-primary-foreground" />
+            <div className="bg-gradient-to-br from-primary to-primary/80 rounded-lg p-5 shadow-glow">
+              <Scissors className="h-10 w-10 text-primary-foreground" />
             </div>
           </div>
-          <CardTitle className="text-3xl font-bold text-foreground">
+          <CardTitle className="text-4xl font-display font-bold text-primary">
             Barbearia Marco Túlio
           </CardTitle>
-          <CardDescription className="text-muted-foreground">
+          <CardDescription className="text-muted-foreground text-base">
             {isSignUp ? "Criar nova conta" : "Faça login para acessar o sistema"}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleAuth} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email" className="text-foreground">Email</Label>
               <Input
                 id="email"
                 type="email"
@@ -93,11 +93,11 @@ const Auth = () => {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className="bg-background border-border"
+                className="bg-background border-border focus:border-primary focus:ring-primary"
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password">Senha</Label>
+              <Label htmlFor="password" className="text-foreground">Senha</Label>
               <Input
                 id="password"
                 type="password"
@@ -105,12 +105,12 @@ const Auth = () => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                className="bg-background border-border"
+                className="bg-background border-border focus:border-primary focus:ring-primary"
               />
             </div>
             <Button
               type="submit"
-              className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
+              className="w-full barber-button-primary font-semibold"
               disabled={isLoading}
             >
               {isLoading ? (
@@ -125,7 +125,7 @@ const Auth = () => {
             <Button
               type="button"
               variant="ghost"
-              className="w-full"
+              className="w-full text-muted-foreground hover:text-primary hover:bg-primary/5"
               onClick={() => setIsSignUp(!isSignUp)}
             >
               {isSignUp ? "Já tem conta? Faça login" : "Não tem conta? Cadastre-se"}

@@ -58,10 +58,18 @@ export default {
           ring: "hsl(var(--sidebar-ring))",
         },
       },
+      fontFamily: {
+        'sans': ['Barlow', 'sans-serif'],
+        'display': ['Playfair Display', 'serif'],
+      },
       borderRadius: {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
+      },
+      boxShadow: {
+        'glow': '0 0 30px hsl(38 92% 50% / 0.3)',
+        'glow-strong': '0 0 40px hsl(38 92% 50% / 0.5)',
       },
       keyframes: {
         "accordion-down": {

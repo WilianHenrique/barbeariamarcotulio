@@ -183,25 +183,25 @@ const Dashboard = () => {
     <div className="min-h-screen bg-background p-6">
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Header */}
-        <Card className="bg-gradient-to-r from-card to-card/80 border-border shadow-xl">
-          <CardHeader>
+        <Card className="barber-card border-primary/20">
+          <CardHeader className="bg-gradient-to-r from-card via-card/95 to-primary/5">
             <div className="flex items-center justify-between flex-wrap gap-4">
               <div className="flex items-center gap-4">
-                <div className="bg-primary rounded-full p-3 shadow-lg">
-                  <Scissors className="h-6 w-6 text-primary-foreground" />
+                <div className="bg-gradient-to-br from-primary to-primary/80 rounded-lg p-4 shadow-glow">
+                  <Scissors className="h-8 w-8 text-primary-foreground" />
                 </div>
                 <div>
-                  <CardTitle className="text-3xl font-bold text-foreground">
+                  <CardTitle className="text-4xl font-display font-bold text-primary tracking-wide">
                     Barbearia Marco Túlio
                   </CardTitle>
-                  <p className="text-muted-foreground">Sistema de Agendamentos</p>
+                  <p className="text-muted-foreground text-lg">Sistema de Agendamentos</p>
                 </div>
               </div>
               <div className="flex gap-2">
                 <Button
                   onClick={() => navigate("/settings")}
                   variant="outline"
-                  className="border-border hover:bg-secondary"
+                  className="border-primary/30 hover:bg-primary/10 hover:border-primary/50 transition-all"
                 >
                   <SettingsIcon className="mr-2 h-4 w-4" />
                   Configurações
@@ -209,7 +209,7 @@ const Dashboard = () => {
                 <Button
                   onClick={handleLogout}
                   variant="outline"
-                  className="border-border hover:bg-secondary"
+                  className="border-accent/30 hover:bg-accent/10 hover:border-accent/50 transition-all"
                 >
                   <LogOut className="mr-2 h-4 w-4" />
                   Sair
@@ -220,53 +220,53 @@ const Dashboard = () => {
         </Card>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Card className="bg-card border-border">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <Card className="barber-card border-primary/20 bg-gradient-to-br from-card to-primary/5">
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-muted-foreground">Agendamentos Pendentes</p>
-                  <p className="text-3xl font-bold text-foreground">{agendamentosPendentes.length}</p>
+                  <p className="text-sm text-muted-foreground uppercase tracking-wider">Agendamentos Pendentes</p>
+                  <p className="text-4xl font-display font-bold text-primary mt-2">{agendamentosPendentes.length}</p>
                 </div>
-                <Calendar className="h-8 w-8 text-primary" />
+                <Calendar className="h-10 w-10 text-primary/60" />
               </div>
             </CardContent>
           </Card>
-          <Card className="bg-card border-border">
+          <Card className="barber-card border-accent/20 bg-gradient-to-br from-card to-accent/5">
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-muted-foreground">Próximas 24h</p>
-                  <p className="text-3xl font-bold text-foreground">
+                  <p className="text-sm text-muted-foreground uppercase tracking-wider">Próximas 24h</p>
+                  <p className="text-4xl font-display font-bold text-accent mt-2">
                     {agendamentosPendentes.filter(a => {
                       const diff = new Date(a.datetime_start).getTime() - new Date().getTime();
                       return diff > 0 && diff < 24 * 60 * 60 * 1000;
                     }).length}
                   </p>
                 </div>
-                <Clock className="h-8 w-8 text-accent" />
+                <Clock className="h-10 w-10 text-accent/60" />
               </div>
             </CardContent>
           </Card>
-          <Card className="bg-card border-border">
+          <Card className="barber-card border-primary/20 bg-gradient-to-br from-card to-primary/5">
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-muted-foreground">Realizados</p>
-                  <p className="text-3xl font-bold text-foreground">
+                  <p className="text-sm text-muted-foreground uppercase tracking-wider">Realizados</p>
+                  <p className="text-4xl font-display font-bold text-primary mt-2">
                     {agendamentosRealizados.length}
                   </p>
                 </div>
-                <User className="h-8 w-8 text-primary" />
+                <User className="h-10 w-10 text-primary/60" />
               </div>
             </CardContent>
           </Card>
         </div>
 
         {/* Tabela de Agendamentos Pendentes */}
-        <Card className="bg-card border-border">
-          <CardHeader>
-            <CardTitle className="text-foreground">Agendamentos Pendentes</CardTitle>
+        <Card className="barber-card border-primary/20">
+          <CardHeader className="border-b border-primary/10">
+            <CardTitle className="text-2xl font-display text-primary">Agendamentos Pendentes</CardTitle>
           </CardHeader>
           <CardContent>
             <Table>
@@ -331,9 +331,9 @@ const Dashboard = () => {
 
         {/* Tabela de Agendamentos Realizados */}
         {agendamentosRealizados.length > 0 && (
-          <Card className="bg-card border-border">
-            <CardHeader>
-              <CardTitle className="text-foreground">Agendamentos Realizados</CardTitle>
+          <Card className="barber-card border-primary/20">
+            <CardHeader className="border-b border-primary/10">
+              <CardTitle className="text-2xl font-display text-primary">Agendamentos Realizados</CardTitle>
             </CardHeader>
             <CardContent>
               <Table>
