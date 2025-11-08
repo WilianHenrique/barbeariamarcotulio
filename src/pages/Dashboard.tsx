@@ -2,13 +2,16 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { LogOut, Calendar, Clock, User, Scissors, Settings as SettingsIcon, Trash2 } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { LogOut, Scissors, Settings as SettingsIcon, BarChart3 } from "lucide-react";
 import { toast } from "sonner";
-import { formatDistanceToNow } from "date-fns";
-import { ptBR } from "date-fns/locale";
+import { MetricsCards } from "@/components/dashboard/MetricsCards";
+import { FilterBar } from "@/components/dashboard/FilterBar";
+import { AgendamentosTable } from "@/components/dashboard/AgendamentosTable";
+import { ClienteHistorico } from "@/components/dashboard/ClienteHistorico";
+import { RelatorioGeral } from "@/components/dashboard/RelatorioGeral";
 
 interface Agendamento {
   id: string;
@@ -16,6 +19,7 @@ interface Agendamento {
   nome_cliente: string;
   datetime_start: string;
   datetime_end: string;
+  dia_agendado: string;
   dia_agendado_formatado: string;
   hora_agendada: string;
   hora_final: string;
@@ -31,6 +35,8 @@ const Dashboard = () => {
   const [agendamentos, setAgendamentos] = useState<Agendamento[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [now, setNow] = useState(Date.now());
+  const [searchTerm, setSearchTerm] = useState("");
+  const [periodFilter, setPeriodFilter] = useState("all");
   useEffect(() => {
     checkAuth();
     loadAgendamentos();
@@ -171,36 +177,88 @@ const Dashboard = () => {
     return <Badge variant="outline">Aguardando</Badge>;
   };
 
-  const agendamentosPendentes = agendamentos.filter(
+  // Filtragem por período
+  const filterByPeriod = (agendamentos: Agendamento[]) => {
+    const now = new Date();
+    return agendamentos.filter(a => {
+      const dataAgendamento = new Date(a.dia_agendado);
+      
+      switch (periodFilter) {
+        case "today":
+          return dataAgendamento.toDateString() === now.toDateString();
+        case "week":
+          const weekAgo = new Date(now);
+          weekAgo.setDate(now.getDate() - 7);
+          return dataAgendamento >= weekAgo;
+        case "month":
+          return dataAgendamento.getMonth() === now.getMonth() && 
+                 dataAgendamento.getFullYear() === now.getFullYear();
+        case "year":
+          return dataAgendamento.getFullYear() === now.getFullYear();
+        default:
+          return true;
+      }
+    });
+  };
+
+  // Filtragem por busca
+  const filterBySearch = (agendamentos: Agendamento[]) => {
+    if (!searchTerm) return agendamentos;
+    return agendamentos.filter(a => 
+      a.nome_cliente.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  };
+
+  const agendamentosFiltrados = filterBySearch(filterByPeriod(agendamentos));
+  
+  const agendamentosPendentes = agendamentosFiltrados.filter(
     a => !(a.notificacao_24h_enviada && a.notificacao_1h_enviada)
   );
 
-  const agendamentosRealizados = agendamentos.filter(
+  const agendamentosRealizados = agendamentosFiltrados.filter(
     a => a.notificacao_24h_enviada && a.notificacao_1h_enviada
   );
 
+  // Histórico do cliente selecionado
+  const clienteSelecionado = searchTerm ? agendamentos.filter(a => 
+    a.nome_cliente.toLowerCase().includes(searchTerm.toLowerCase())
+  ) : [];
+
+  // Métricas
+  const totalMes = agendamentos.filter(a => {
+    const data = new Date(a.dia_agendado);
+    const now = new Date();
+    return data.getMonth() === now.getMonth() && data.getFullYear() === now.getFullYear();
+  }).length;
+
+  const proximas24h = agendamentosPendentes.filter(a => {
+    const diff = new Date(a.datetime_start).getTime() - new Date().getTime();
+    return diff > 0 && diff < 24 * 60 * 60 * 1000;
+  }).length;
+
   return (
-    <div className="min-h-screen bg-background p-6">
-      <div className="max-w-7xl mx-auto space-y-6">
+    <div className="min-h-screen bg-background p-4 sm:p-6">
+      <div className="max-w-[1600px] mx-auto space-y-6">
         {/* Header */}
         <Card className="barber-card border-primary/20">
           <CardHeader className="bg-gradient-to-r from-card via-card/95 to-primary/5">
             <div className="flex items-center justify-between flex-wrap gap-4">
-              <div className="flex items-center gap-4">
-                <div className="bg-gradient-to-br from-primary to-primary/80 rounded-lg p-4 shadow-glow">
-                  <Scissors className="h-8 w-8 text-primary-foreground" />
+              <div className="flex items-center gap-3">
+                <div className="bg-gradient-to-br from-primary to-primary/80 rounded-lg p-3 shadow-glow">
+                  <Scissors className="h-7 w-7 text-primary-foreground" />
                 </div>
                 <div>
-                  <CardTitle className="text-4xl font-display font-bold text-primary tracking-wide">
+                  <CardTitle className="text-2xl sm:text-3xl font-display font-bold text-primary tracking-wide">
                     Barbearia Marco Túlio
                   </CardTitle>
-                  <p className="text-muted-foreground text-lg">Sistema de Agendamentos</p>
+                  <p className="text-muted-foreground text-sm sm:text-base">Sistema de Gestão de Agendamentos</p>
                 </div>
               </div>
               <div className="flex gap-2">
                 <Button
                   onClick={() => navigate("/settings")}
                   variant="outline"
+                  size="sm"
                   className="border-primary/30 hover:bg-primary/10 hover:border-primary/50 transition-all"
                 >
                   <SettingsIcon className="mr-2 h-4 w-4" />
@@ -209,6 +267,7 @@ const Dashboard = () => {
                 <Button
                   onClick={handleLogout}
                   variant="outline"
+                  size="sm"
                   className="border-accent/30 hover:bg-accent/10 hover:border-accent/50 transition-all"
                 >
                   <LogOut className="mr-2 h-4 w-4" />
@@ -219,167 +278,91 @@ const Dashboard = () => {
           </CardHeader>
         </Card>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <Card className="barber-card border-primary/20 bg-gradient-to-br from-card to-primary/5">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground uppercase tracking-wider">Agendamentos Pendentes</p>
-                  <p className="text-4xl font-display font-bold text-primary mt-2">{agendamentosPendentes.length}</p>
-                </div>
-                <Calendar className="h-10 w-10 text-primary/60" />
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="barber-card border-accent/20 bg-gradient-to-br from-card to-accent/5">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground uppercase tracking-wider">Próximas 24h</p>
-                  <p className="text-4xl font-display font-bold text-accent mt-2">
-                    {agendamentosPendentes.filter(a => {
-                      const diff = new Date(a.datetime_start).getTime() - new Date().getTime();
-                      return diff > 0 && diff < 24 * 60 * 60 * 1000;
-                    }).length}
-                  </p>
-                </div>
-                <Clock className="h-10 w-10 text-accent/60" />
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="barber-card border-primary/20 bg-gradient-to-br from-card to-primary/5">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground uppercase tracking-wider">Realizados</p>
-                  <p className="text-4xl font-display font-bold text-primary mt-2">
-                    {agendamentosRealizados.length}
-                  </p>
-                </div>
-                <User className="h-10 w-10 text-primary/60" />
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+        {/* Métricas */}
+        <MetricsCards
+          totalAgendamentos={agendamentosPendentes.length}
+          proximas24h={proximas24h}
+          realizados={agendamentosRealizados.length}
+          totalMes={totalMes}
+        />
 
-        {/* Tabela de Agendamentos Pendentes */}
+        {/* Barra de Filtros */}
         <Card className="barber-card border-primary/20">
-          <CardHeader className="border-b border-primary/10">
-            <CardTitle className="text-2xl font-display text-primary">Agendamentos Pendentes</CardTitle>
+          <CardHeader>
+            <FilterBar
+              searchTerm={searchTerm}
+              setSearchTerm={setSearchTerm}
+              periodFilter={periodFilter}
+              setPeriodFilter={setPeriodFilter}
+            />
           </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow className="border-border hover:bg-secondary/50">
-                  <TableHead className="text-muted-foreground">Cliente</TableHead>
-                  <TableHead className="text-muted-foreground">Data</TableHead>
-                  <TableHead className="text-muted-foreground">Horário</TableHead>
-                  <TableHead className="text-muted-foreground">Serviço</TableHead>
-                  <TableHead className="text-muted-foreground">Tempo Restante</TableHead>
-                  <TableHead className="text-muted-foreground">Status Notificação</TableHead>
-                  <TableHead className="text-muted-foreground">Ações</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {isLoading ? (
-                  <TableRow>
-                    <TableCell colSpan={7} className="text-center text-muted-foreground">
-                      Carregando...
-                    </TableCell>
-                  </TableRow>
-                ) : agendamentosPendentes.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={7} className="text-center text-muted-foreground">
-                      Nenhum agendamento pendente
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  agendamentosPendentes.map((agendamento) => (
-                    <TableRow key={agendamento.id} className="border-border hover:bg-secondary/50">
-                      <TableCell className="font-medium text-foreground">
-                        {agendamento.nome_cliente}
-                      </TableCell>
-                      <TableCell className="text-foreground">
-                        {agendamento.dia_agendado_formatado}
-                      </TableCell>
-                      <TableCell className="text-foreground">
-                        {agendamento.hora_agendada} - {agendamento.hora_final}
-                      </TableCell>
-                      <TableCell className="text-foreground">{agendamento.servico}</TableCell>
-                      <TableCell className="text-foreground font-mono">
-                        {getTempoRestante(agendamento.datetime_start)}
-                      </TableCell>
-                      <TableCell>{getNotificacaoStatus(agendamento)}</TableCell>
-                      <TableCell>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleDelete(agendamento.id, agendamento.nome_cliente)}
-                          className="hover:bg-destructive/10 hover:text-destructive"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </CardContent>
         </Card>
 
-        {/* Tabela de Agendamentos Realizados */}
-        {agendamentosRealizados.length > 0 && (
-          <Card className="barber-card border-primary/20">
-            <CardHeader className="border-b border-primary/10">
-              <CardTitle className="text-2xl font-display text-primary">Agendamentos Realizados</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow className="border-border hover:bg-secondary/50">
-                    <TableHead className="text-muted-foreground">Cliente</TableHead>
-                    <TableHead className="text-muted-foreground">Data</TableHead>
-                    <TableHead className="text-muted-foreground">Horário</TableHead>
-                    <TableHead className="text-muted-foreground">Serviço</TableHead>
-                    <TableHead className="text-muted-foreground">Status</TableHead>
-                    <TableHead className="text-muted-foreground">Ações</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {agendamentosRealizados.map((agendamento) => (
-                    <TableRow key={agendamento.id} className="border-border hover:bg-secondary/50">
-                      <TableCell className="font-medium text-foreground">
-                        {agendamento.nome_cliente}
-                      </TableCell>
-                      <TableCell className="text-foreground">
-                        {agendamento.dia_agendado_formatado}
-                      </TableCell>
-                      <TableCell className="text-foreground">
-                        {agendamento.hora_agendada} - {agendamento.hora_final}
-                      </TableCell>
-                      <TableCell className="text-foreground">{agendamento.servico}</TableCell>
-                      <TableCell>
-                        <Badge variant="secondary">Notificações enviadas</Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleDelete(agendamento.id, agendamento.nome_cliente)}
-                          className="hover:bg-destructive/10 hover:text-destructive"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
+        {/* Histórico do Cliente */}
+        {searchTerm && clienteSelecionado.length > 0 && (
+          <ClienteHistorico
+            clienteNome={clienteSelecionado[0].nome_cliente}
+            agendamentos={clienteSelecionado}
+          />
         )}
+
+        {/* Tabs de Navegação */}
+        <Tabs defaultValue="pendentes" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-3 bg-card border border-border/50">
+            <TabsTrigger value="pendentes" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+              Pendentes ({agendamentosPendentes.length})
+            </TabsTrigger>
+            <TabsTrigger value="realizados" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+              Realizados ({agendamentosRealizados.length})
+            </TabsTrigger>
+            <TabsTrigger value="relatorios" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+              <BarChart3 className="mr-2 h-4 w-4" />
+              Relatórios
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="pendentes" className="space-y-4">
+            <Card className="barber-card border-primary/20">
+              <CardHeader className="border-b border-primary/10">
+                <CardTitle className="text-xl font-display text-primary">Agendamentos Pendentes</CardTitle>
+              </CardHeader>
+              <div className="p-6">
+                <AgendamentosTable
+                  agendamentos={agendamentosPendentes}
+                  isLoading={isLoading}
+                  now={now}
+                  getTempoRestante={getTempoRestante}
+                  getNotificacaoStatus={getNotificacaoStatus}
+                  handleDelete={handleDelete}
+                  emptyMessage="Nenhum agendamento pendente"
+                />
+              </div>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="realizados" className="space-y-4">
+            <Card className="barber-card border-primary/20">
+              <CardHeader className="border-b border-primary/10">
+                <CardTitle className="text-xl font-display text-primary">Agendamentos Realizados</CardTitle>
+              </CardHeader>
+              <div className="p-6">
+                <AgendamentosTable
+                  agendamentos={agendamentosRealizados}
+                  isLoading={isLoading}
+                  now={now}
+                  getTempoRestante={getTempoRestante}
+                  getNotificacaoStatus={getNotificacaoStatus}
+                  handleDelete={handleDelete}
+                  emptyMessage="Nenhum agendamento realizado"
+                />
+              </div>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="relatorios" className="space-y-6">
+            <RelatorioGeral agendamentos={agendamentos} />
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );
