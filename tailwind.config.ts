@@ -59,8 +59,8 @@ export default {
         },
       },
       fontFamily: {
-        'sans': ['Barlow', 'sans-serif'],
-        'display': ['Playfair Display', 'serif'],
+        'sans': ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+        'display': ['Oswald', 'Impact', 'sans-serif'],
       },
       borderRadius: {
         lg: "var(--radius)",
@@ -68,8 +68,8 @@ export default {
         sm: "calc(var(--radius) - 4px)",
       },
       boxShadow: {
-        'glow': '0 0 30px hsl(38 92% 50% / 0.3)',
-        'glow-strong': '0 0 40px hsl(38 92% 50% / 0.5)',
+        'glow': '0 8px 32px hsl(35 100% 65% / 0.25)',
+        'glow-strong': '0 12px 48px hsl(35 100% 65% / 0.4)',
       },
       keyframes: {
         "accordion-down": {

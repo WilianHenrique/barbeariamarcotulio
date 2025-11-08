@@ -8,81 +8,81 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    /* Tema Barbearia Marco Túlio - Elegante e Clássico */
-    --background: 20 14% 8%;
-    --foreground: 40 60% 90%;
+    /* Tema Barbearia Premium - Moderno e Sofisticado */
+    --background: 220 20% 7%;
+    --foreground: 210 20% 98%;
 
-    --card: 20 14% 12%;
-    --card-foreground: 40 60% 90%;
+    --card: 220 18% 10%;
+    --card-foreground: 210 20% 98%;
 
-    --popover: 20 14% 10%;
-    --popover-foreground: 40 60% 90%;
+    --popover: 220 20% 8%;
+    --popover-foreground: 210 20% 98%;
 
-    --primary: 38 92% 50%;
-    --primary-foreground: 20 14% 8%;
+    --primary: 35 100% 65%;
+    --primary-foreground: 220 20% 7%;
 
-    --secondary: 20 14% 16%;
-    --secondary-foreground: 40 60% 90%;
+    --secondary: 220 15% 15%;
+    --secondary-foreground: 210 20% 98%;
 
-    --muted: 20 14% 20%;
-    --muted-foreground: 40 20% 65%;
+    --muted: 220 15% 18%;
+    --muted-foreground: 210 10% 65%;
 
-    --accent: 0 72% 45%;
-    --accent-foreground: 40 60% 90%;
+    --accent: 15 85% 55%;
+    --accent-foreground: 210 20% 98%;
 
-    --destructive: 0 72% 50%;
-    --destructive-foreground: 40 60% 90%;
+    --destructive: 0 80% 55%;
+    --destructive-foreground: 210 20% 98%;
 
-    --border: 20 14% 24%;
-    --input: 20 14% 20%;
-    --ring: 38 92% 50%;
+    --border: 220 15% 22%;
+    --input: 220 15% 20%;
+    --ring: 35 100% 65%;
 
-    --radius: 0.5rem;
+    --radius: 0.75rem;
 
-    /* Gradientes Barbearia */
-    --gradient-primary: linear-gradient(135deg, hsl(38 92% 50%), hsl(35 88% 45%));
-    --gradient-dark: linear-gradient(180deg, hsl(20 14% 10%), hsl(20 14% 6%));
-    --gradient-card: linear-gradient(135deg, hsl(20 14% 12%), hsl(20 14% 14%));
-    --gradient-accent: linear-gradient(135deg, hsl(0 72% 45%), hsl(0 68% 40%));
+    /* Gradientes Premium */
+    --gradient-primary: linear-gradient(135deg, hsl(35 100% 65%), hsl(38 100% 75%));
+    --gradient-accent: linear-gradient(135deg, hsl(15 85% 55%), hsl(15 75% 45%));
+    --gradient-dark: linear-gradient(180deg, hsl(220 20% 7%), hsl(220 18% 9%));
+    --gradient-card: linear-gradient(135deg, hsl(220 18% 10%) 0%, hsl(220 18% 11%) 100%);
     
-    /* Sombras Elegantes */
-    --shadow-primary: 0 10px 40px -10px hsl(38 92% 50% / 0.5);
-    --shadow-card: 0 4px 20px hsl(0 0% 0% / 0.4);
-    --shadow-glow: 0 0 30px hsl(38 92% 50% / 0.3);
+    /* Sombras Premium */
+    --shadow-glow: 0 8px 32px hsl(35 100% 65% / 0.25);
+    --shadow-glow-strong: 0 12px 48px hsl(35 100% 65% / 0.4);
+    --shadow-accent: 0 8px 32px hsl(15 85% 55% / 0.2);
+    --shadow-card: 0 4px 20px hsl(220 20% 7% / 0.5);
     
-    /* Animações Suaves */
-    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    --transition-glow: box-shadow 0.3s ease-in-out;
+    /* Transições */
+    --transition-smooth: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
   .dark {
-    --background: 20 14% 8%;
-    --foreground: 40 60% 90%;
+    --background: 220 20% 7%;
+    --foreground: 210 20% 98%;
 
-    --card: 20 14% 12%;
-    --card-foreground: 40 60% 90%;
+    --card: 220 18% 10%;
+    --card-foreground: 210 20% 98%;
 
-    --popover: 20 14% 10%;
-    --popover-foreground: 40 60% 90%;
+    --popover: 220 20% 8%;
+    --popover-foreground: 210 20% 98%;
 
-    --primary: 38 92% 50%;
-    --primary-foreground: 20 14% 8%;
+    --primary: 35 100% 65%;
+    --primary-foreground: 220 20% 7%;
 
-    --secondary: 20 14% 16%;
-    --secondary-foreground: 40 60% 90%;
+    --secondary: 220 15% 15%;
+    --secondary-foreground: 210 20% 98%;
 
-    --muted: 20 14% 20%;
-    --muted-foreground: 40 20% 65%;
+    --muted: 220 15% 18%;
+    --muted-foreground: 210 10% 65%;
 
-    --accent: 0 72% 45%;
-    --accent-foreground: 40 60% 90%;
+    --accent: 15 85% 55%;
+    --accent-foreground: 210 20% 98%;
 
-    --destructive: 0 72% 50%;
-    --destructive-foreground: 40 60% 90%;
+    --destructive: 0 80% 55%;
+    --destructive-foreground: 210 20% 98%;
 
-    --border: 20 14% 24%;
-    --input: 20 14% 20%;
-    --ring: 38 92% 50%;
+    --border: 220 15% 22%;
+    --input: 220 15% 20%;
+    --ring: 35 100% 65%;
   }
 }
 
@@ -93,36 +93,46 @@ All colors MUST be HSL.
 
   body {
     @apply bg-background text-foreground;
-    font-family: 'Barlow', sans-serif;
+    font-family: 'Inter', sans-serif;
+    font-weight: 400;
+    letter-spacing: -0.01em;
   }
 
   h1, h2, h3, h4, h5, h6 {
-    font-family: 'Playfair Display', serif;
-    font-weight: 700;
+    font-family: 'Oswald', sans-serif;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
   }
 
-  /* Efeito de brilho dourado em cards */
+  /* Cards com estilo premium */
   .barber-card {
     background: var(--gradient-card);
     box-shadow: var(--shadow-card);
     border: 1px solid hsl(var(--border));
     transition: var(--transition-smooth);
+    backdrop-filter: blur(10px);
   }
 
   .barber-card:hover {
     box-shadow: var(--shadow-glow);
-    border-color: hsl(38 92% 50% / 0.3);
+    border-color: hsl(var(--primary) / 0.4);
+    transform: translateY(-2px);
   }
 
-  /* Botões com estilo de barbearia */
+  /* Botões com estilo premium */
   .barber-button-primary {
     background: var(--gradient-primary);
-    box-shadow: var(--shadow-primary);
+    color: hsl(var(--primary-foreground));
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
     transition: var(--transition-smooth);
+    box-shadow: 0 4px 16px hsl(var(--primary) / 0.25);
   }
 
   .barber-button-primary:hover {
-    box-shadow: 0 15px 50px -15px hsl(38 92% 50% / 0.7);
-    transform: translateY(-2px);
+    box-shadow: var(--shadow-glow-strong);
+    transform: translateY(-3px) scale(1.02);
   }
 }
