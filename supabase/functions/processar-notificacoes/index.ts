@@ -21,6 +21,19 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
+    // Buscar templates ativos de mensagens
+    const { data: templates, error: templatesError } = await supabaseClient
+      .from('mensagens_template')
+      .select('*')
+      .eq('ativo', true);
+
+    if (templatesError) {
+      console.error("Erro ao buscar templates:", templatesError);
+    }
+
+    const template24h = templates?.find(t => t.tipo === '24h');
+    const template1h = templates?.find(t => t.tipo === '1h');
+
     const agora = new Date();
     
     // Calcular janelas de tempo (de agora até 24h15min e até 1h15min no futuro)
@@ -66,6 +79,13 @@ serve(async (req) => {
       
       for (const agendamento of agendamentos24h) {
         try {
+          // Substituir variáveis na mensagem personalizada
+          let mensagemPersonalizada = template24h?.mensagem || "Lembrete: você tem um agendamento amanhã.";
+          mensagemPersonalizada = mensagemPersonalizada
+            .replace(/{hora_agendada}/g, agendamento.hora_agendada)
+            .replace(/{servico}/g, agendamento.servico)
+            .replace(/{nome_cliente}/g, agendamento.nome_cliente);
+
           const payload = {
             id_evento: agendamento.id_evento,
             Nome_cliente: agendamento.nome_cliente,
@@ -80,7 +100,8 @@ serve(async (req) => {
             tempo_total_minutos: agendamento.tempo_total_minutos.toString(),
             Status_Evento: agendamento.status_evento,
             EventoRecorrente: agendamento.evento_recorrente,
-            tipo_notificacao: "Notificação de 24 horas"
+            tipo_notificacao: "Notificação de 24 horas",
+            mensagem_personalizada: mensagemPersonalizada
           };
 
           const response = await fetch(WEBHOOK_URL, {
@@ -90,10 +111,22 @@ serve(async (req) => {
           });
 
           if (response.ok) {
+            // Atualizar flag no agendamento
             await supabaseClient
               .from('agendamentos')
               .update({ notificacao_24h_enviada: true })
               .eq('id', agendamento.id);
+            
+            // Registrar no histórico
+            await supabaseClient
+              .from('historico_mensagens')
+              .insert({
+                agendamento_id: agendamento.id,
+                nome_cliente: agendamento.nome_cliente,
+                tipo_notificacao: "Notificação de 24 horas",
+                mensagem_enviada: mensagemPersonalizada,
+                status: 'enviada'
+              });
             
             notificacoesEnviadas++;
             console.log(`Notificação 24h enviada para: ${agendamento.nome_cliente}`);
@@ -110,6 +143,13 @@ serve(async (req) => {
       
       for (const agendamento of agendamentos1h) {
         try {
+          // Substituir variáveis na mensagem personalizada
+          let mensagemPersonalizada = template1h?.mensagem || "Lembrete: seu horário é daqui a 1 hora.";
+          mensagemPersonalizada = mensagemPersonalizada
+            .replace(/{hora_agendada}/g, agendamento.hora_agendada)
+            .replace(/{servico}/g, agendamento.servico)
+            .replace(/{nome_cliente}/g, agendamento.nome_cliente);
+
           const payload = {
             id_evento: agendamento.id_evento,
             Nome_cliente: agendamento.nome_cliente,
@@ -124,7 +164,8 @@ serve(async (req) => {
             tempo_total_minutos: agendamento.tempo_total_minutos.toString(),
             Status_Evento: agendamento.status_evento,
             EventoRecorrente: agendamento.evento_recorrente,
-            tipo_notificacao: "Notificação de 1 hora"
+            tipo_notificacao: "Notificação de 1 hora",
+            mensagem_personalizada: mensagemPersonalizada
           };
 
           const response = await fetch(WEBHOOK_URL, {
@@ -134,10 +175,22 @@ serve(async (req) => {
           });
 
           if (response.ok) {
+            // Atualizar flag no agendamento
             await supabaseClient
               .from('agendamentos')
               .update({ notificacao_1h_enviada: true })
               .eq('id', agendamento.id);
+            
+            // Registrar no histórico
+            await supabaseClient
+              .from('historico_mensagens')
+              .insert({
+                agendamento_id: agendamento.id,
+                nome_cliente: agendamento.nome_cliente,
+                tipo_notificacao: "Notificação de 1 hora",
+                mensagem_enviada: mensagemPersonalizada,
+                status: 'enviada'
+              });
             
             notificacoesEnviadas++;
             console.log(`Notificação 1h enviada para: ${agendamento.nome_cliente}`);

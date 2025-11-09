@@ -12,6 +12,7 @@ import { FilterBar } from "@/components/dashboard/FilterBar";
 import { AgendamentosTable } from "@/components/dashboard/AgendamentosTable";
 import { ClienteHistorico } from "@/components/dashboard/ClienteHistorico";
 import { RelatorioGeral } from "@/components/dashboard/RelatorioGeral";
+import { MensagensAgendadas } from "@/components/dashboard/MensagensAgendadas";
 
 interface Agendamento {
   id: string;
@@ -131,50 +132,45 @@ const Dashboard = () => {
   };
 
   const getNotificacaoStatus = (agendamento: Agendamento) => {
-    const datetime = new Date(agendamento.datetime_start);
-    const diff = datetime.getTime() - now;
-    const horasRestantes = diff / (1000 * 60 * 60);
+    const agora = new Date();
+    const dataEvento = new Date(agendamento.datetime_start);
+    const horasRestantes = (dataEvento.getTime() - agora.getTime()) / (1000 * 60 * 60);
 
-    // Se ambas notificações já foram enviadas
-    if (agendamento.notificacao_24h_enviada && agendamento.notificacao_1h_enviada) {
-      return <Badge variant="secondary">Notificações enviadas</Badge>;
+    // Se o evento já passou - marcar como realizada
+    if (horasRestantes < 0) {
+      if (agendamento.notificacao_24h_enviada && agendamento.notificacao_1h_enviada) {
+        return <Badge variant="outline" className="bg-green-500/10 text-green-500 border-green-500/20">Realizada</Badge>;
+      }
+      if (agendamento.notificacao_24h_enviada || agendamento.notificacao_1h_enviada) {
+        return <Badge variant="outline" className="bg-yellow-500/10 text-yellow-500 border-yellow-500/20">Parcial</Badge>;
+      }
+      return <Badge variant="outline" className="bg-red-500/10 text-red-500 border-red-500/20">Não enviada</Badge>;
     }
 
-    // Se falta menos de 1h e notificação de 1h ainda não foi enviada
-    if (horasRestantes < 1 && !agendamento.notificacao_1h_enviada) {
-      const tempoAte1h = datetime.getTime() - now;
-      if (tempoAte1h <= 0) return <Badge variant="destructive">Processando...</Badge>;
-      
-      const totalSeconds = Math.floor(tempoAte1h / 1000);
-      const minutos = Math.floor(totalSeconds / 60);
-      const segundos = totalSeconds % 60;
-      
-      return (
-        <Badge variant="destructive" className="font-mono">
-          Notificação em: {minutos}m {segundos.toString().padStart(2, '0')}s
-        </Badge>
-      );
+    // Notificação de 24h
+    if (horasRestantes > 24) {
+      return <Badge variant="outline" className="bg-blue-500/10 text-blue-500 border-blue-500/20">Pendente</Badge>;
     }
 
-    // Se falta menos de 24h e notificação de 24h ainda não foi enviada
-    if (horasRestantes < 24 && !agendamento.notificacao_24h_enviada) {
-      const tempoAte24h = datetime.getTime() - 24 * 60 * 60 * 1000 - now;
-      if (tempoAte24h <= 0) return <Badge className="bg-accent">Processando...</Badge>;
-      
-      const totalSeconds = Math.floor(tempoAte24h / 1000);
-      const horas = Math.floor(totalSeconds / 3600);
-      const minutos = Math.floor((totalSeconds % 3600) / 60);
-      const segundos = totalSeconds % 60;
-      
-      return (
-        <Badge className="bg-accent font-mono">
-          Notificação em: {horas}h {minutos}m {segundos.toString().padStart(2, '0')}s
-        </Badge>
-      );
+    if (horasRestantes > 1 && horasRestantes <= 24) {
+      if (agendamento.notificacao_24h_enviada) {
+        return <Badge variant="outline" className="bg-green-500/10 text-green-500 border-green-500/20">24h Enviada</Badge>;
+      }
+      return <Badge variant="outline" className="bg-orange-500/10 text-orange-500 border-orange-500/20">Processando</Badge>;
     }
 
-    // Se falta mais de 24h
-    return <Badge variant="outline">Aguardando</Badge>;
+    // Notificação de 1h
+    if (horasRestantes <= 1) {
+      if (agendamento.notificacao_1h_enviada && agendamento.notificacao_24h_enviada) {
+        return <Badge variant="outline" className="bg-green-500/10 text-green-500 border-green-500/20">Completas</Badge>;
+      }
+      if (agendamento.notificacao_1h_enviada) {
+        return <Badge variant="outline" className="bg-green-500/10 text-green-500 border-green-500/20">1h Enviada</Badge>;
+      }
+      return <Badge variant="outline" className="bg-orange-500/10 text-orange-500 border-orange-500/20">Processando</Badge>;
+    }
+
+    return <Badge variant="outline" className="bg-gray-500/10 text-gray-500 border-gray-500/20">Pendente</Badge>;
   };
 
   // Filtragem por período
@@ -308,12 +304,15 @@ const Dashboard = () => {
 
         {/* Tabs de Navegação */}
         <Tabs defaultValue="pendentes" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3 bg-card border border-border/50">
+          <TabsList className="grid w-full grid-cols-4 bg-card border border-border/50">
             <TabsTrigger value="pendentes" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
               Pendentes ({agendamentosPendentes.length})
             </TabsTrigger>
             <TabsTrigger value="realizados" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
               Realizados ({agendamentosRealizados.length})
+            </TabsTrigger>
+            <TabsTrigger value="mensagens" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+              Mensagens
             </TabsTrigger>
             <TabsTrigger value="relatorios" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
               <BarChart3 className="mr-2 h-4 w-4" />
@@ -357,6 +356,10 @@ const Dashboard = () => {
                 />
               </div>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="mensagens" className="space-y-6">
+            <MensagensAgendadas />
           </TabsContent>
 
           <TabsContent value="relatorios" className="space-y-6">

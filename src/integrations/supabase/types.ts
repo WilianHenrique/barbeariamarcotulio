@@ -77,6 +77,71 @@ export type Database = {
         }
         Relationships: []
       }
+      historico_mensagens: {
+        Row: {
+          agendamento_id: string
+          enviado_em: string
+          id: string
+          mensagem_enviada: string
+          nome_cliente: string
+          status: string
+          tipo_notificacao: string
+        }
+        Insert: {
+          agendamento_id: string
+          enviado_em?: string
+          id?: string
+          mensagem_enviada: string
+          nome_cliente: string
+          status?: string
+          tipo_notificacao: string
+        }
+        Update: {
+          agendamento_id?: string
+          enviado_em?: string
+          id?: string
+          mensagem_enviada?: string
+          nome_cliente?: string
+          status?: string
+          tipo_notificacao?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "historico_mensagens_agendamento_id_fkey"
+            columns: ["agendamento_id"]
+            isOneToOne: false
+            referencedRelation: "agendamentos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mensagens_template: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          id: string
+          mensagem: string
+          tipo: string
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          id?: string
+          mensagem: string
+          tipo: string
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          id?: string
+          mensagem?: string
+          tipo?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
