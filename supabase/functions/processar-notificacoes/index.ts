@@ -21,18 +21,22 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    // Buscar templates ativos de mensagens
+    // Buscar templates de mensagens
     const { data: templates, error: templatesError } = await supabaseClient
       .from('mensagens_template')
       .select('*')
-      .eq('ativo', true);
+      .order('created_at', { ascending: false });
 
     if (templatesError) {
       console.error("Erro ao buscar templates:", templatesError);
     }
 
+    // Pegar apenas os templates mais recentes de cada tipo
     const template24h = templates?.find(t => t.tipo === '24h');
     const template1h = templates?.find(t => t.tipo === '1h');
+
+    console.log(`Template 24h: ${template24h?.ativo ? 'ATIVO' : 'INATIVO'}`);
+    console.log(`Template 1h: ${template1h?.ativo ? 'ATIVO' : 'INATIVO'}`);
 
     const agora = new Date();
     
@@ -74,7 +78,7 @@ serve(async (req) => {
     let notificacoesEnviadas = 0;
 
     // Processar notificações de 24h
-    if (agendamentos24h && agendamentos24h.length > 0) {
+    if (agendamentos24h && agendamentos24h.length > 0 && template24h?.ativo) {
       console.log(`Processando ${agendamentos24h.length} notificações de 24h`);
       
       for (const agendamento of agendamentos24h) {
@@ -138,7 +142,7 @@ serve(async (req) => {
     }
 
     // Processar notificações de 1h
-    if (agendamentos1h && agendamentos1h.length > 0) {
+    if (agendamentos1h && agendamentos1h.length > 0 && template1h?.ativo) {
       console.log(`Processando ${agendamentos1h.length} notificações de 1h`);
       
       for (const agendamento of agendamentos1h) {

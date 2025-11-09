@@ -5,8 +5,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Save, Clock } from "lucide-react";
+import { Loader2, Save, Clock, Power, PowerOff } from "lucide-react";
 
 interface MensagemTemplate {
   id: string;
@@ -25,6 +26,8 @@ export const MensagensAgendadas = () => {
 
   const [mensagem24h, setMensagem24h] = useState("");
   const [mensagem1h, setMensagem1h] = useState("");
+  const [ativa24h, setAtiva24h] = useState(true);
+  const [ativa1h, setAtiva1h] = useState(true);
 
   useEffect(() => {
     loadTemplates();
@@ -45,8 +48,14 @@ export const MensagensAgendadas = () => {
         const template24h = data.find(t => t.tipo === "24h");
         const template1h = data.find(t => t.tipo === "1h");
         
-        if (template24h) setMensagem24h(template24h.mensagem);
-        if (template1h) setMensagem1h(template1h.mensagem);
+        if (template24h) {
+          setMensagem24h(template24h.mensagem);
+          setAtiva24h(template24h.ativo);
+        }
+        if (template1h) {
+          setMensagem1h(template1h.mensagem);
+          setAtiva1h(template1h.ativo);
+        }
       }
     } catch (error) {
       console.error("Erro ao carregar templates:", error);
@@ -60,6 +69,66 @@ export const MensagensAgendadas = () => {
     }
   };
 
+  const handleToggle24h = async (checked: boolean) => {
+    setAtiva24h(checked);
+    try {
+      // Atualizar apenas o template de 24h
+      const { error } = await supabase
+        .from("mensagens_template")
+        .update({ ativo: checked })
+        .eq("tipo", "24h")
+        .order("created_at", { ascending: false })
+        .limit(1);
+
+      if (error) throw error;
+
+      toast({
+        title: checked ? "Mensagem 24h ativada" : "Mensagem 24h desativada",
+        description: checked 
+          ? "As notificações de 24 horas serão enviadas" 
+          : "As notificações de 24 horas foram pausadas",
+      });
+    } catch (error) {
+      console.error("Erro ao atualizar status:", error);
+      setAtiva24h(!checked); // Reverter em caso de erro
+      toast({
+        title: "Erro",
+        description: "Não foi possível atualizar o status",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleToggle1h = async (checked: boolean) => {
+    setAtiva1h(checked);
+    try {
+      // Atualizar apenas o template de 1h
+      const { error } = await supabase
+        .from("mensagens_template")
+        .update({ ativo: checked })
+        .eq("tipo", "1h")
+        .order("created_at", { ascending: false })
+        .limit(1);
+
+      if (error) throw error;
+
+      toast({
+        title: checked ? "Mensagem 1h ativada" : "Mensagem 1h desativada",
+        description: checked 
+          ? "As notificações de 1 hora serão enviadas" 
+          : "As notificações de 1 hora foram pausadas",
+      });
+    } catch (error) {
+      console.error("Erro ao atualizar status:", error);
+      setAtiva1h(!checked); // Reverter em caso de erro
+      toast({
+        title: "Erro",
+        description: "Não foi possível atualizar o status",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleSave = async () => {
     setSaving(true);
     try {
@@ -69,12 +138,12 @@ export const MensagensAgendadas = () => {
         .update({ ativo: false })
         .eq("ativo", true);
 
-      // Inserir novos templates
+      // Inserir novos templates com o status atual
       const { error } = await supabase
         .from("mensagens_template")
         .insert([
-          { tipo: "24h", mensagem: mensagem24h, ativo: true },
-          { tipo: "1h", mensagem: mensagem1h, ativo: true },
+          { tipo: "24h", mensagem: mensagem24h, ativo: ativa24h },
+          { tipo: "1h", mensagem: mensagem1h, ativo: ativa1h },
         ]);
 
       if (error) throw error;
@@ -118,12 +187,32 @@ export const MensagensAgendadas = () => {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          <div className="space-y-2">
+          {/* Mensagem 24h */}
+          <div className="space-y-4 p-4 border border-border/50 rounded-lg bg-card/30">
             <div className="flex items-center justify-between">
-              <Label htmlFor="msg-24h">Mensagem 24 horas antes</Label>
-              <Badge variant="outline" className="text-xs">
-                24h antes
-              </Badge>
+              <div className="flex items-center gap-3">
+                <Label htmlFor="msg-24h" className="text-base font-semibold">
+                  Mensagem 24 horas antes
+                </Label>
+                <Badge variant="outline" className="text-xs">
+                  24h antes
+                </Badge>
+              </div>
+              <div className="flex items-center gap-2">
+                <Label htmlFor="switch-24h" className="text-sm text-muted-foreground">
+                  {ativa24h ? "Ativa" : "Inativa"}
+                </Label>
+                <Switch
+                  id="switch-24h"
+                  checked={ativa24h}
+                  onCheckedChange={handleToggle24h}
+                />
+                {ativa24h ? (
+                  <Power className="h-4 w-4 text-green-500" />
+                ) : (
+                  <PowerOff className="h-4 w-4 text-red-500" />
+                )}
+              </div>
             </div>
             <Textarea
               id="msg-24h"
@@ -132,18 +221,39 @@ export const MensagensAgendadas = () => {
               placeholder="Digite a mensagem que será enviada 24 horas antes do agendamento"
               className="min-h-[120px] bg-background/50"
               rows={5}
+              disabled={!ativa24h}
             />
             <p className="text-xs text-muted-foreground">
               Variáveis disponíveis: {"{hora_agendada}"}, {"{servico}"}, {"{nome_cliente}"}
             </p>
           </div>
 
-          <div className="space-y-2">
+          {/* Mensagem 1h */}
+          <div className="space-y-4 p-4 border border-border/50 rounded-lg bg-card/30">
             <div className="flex items-center justify-between">
-              <Label htmlFor="msg-1h">Mensagem 1 hora antes</Label>
-              <Badge variant="outline" className="text-xs">
-                1h antes
-              </Badge>
+              <div className="flex items-center gap-3">
+                <Label htmlFor="msg-1h" className="text-base font-semibold">
+                  Mensagem 1 hora antes
+                </Label>
+                <Badge variant="outline" className="text-xs">
+                  1h antes
+                </Badge>
+              </div>
+              <div className="flex items-center gap-2">
+                <Label htmlFor="switch-1h" className="text-sm text-muted-foreground">
+                  {ativa1h ? "Ativa" : "Inativa"}
+                </Label>
+                <Switch
+                  id="switch-1h"
+                  checked={ativa1h}
+                  onCheckedChange={handleToggle1h}
+                />
+                {ativa1h ? (
+                  <Power className="h-4 w-4 text-green-500" />
+                ) : (
+                  <PowerOff className="h-4 w-4 text-red-500" />
+                )}
+              </div>
             </div>
             <Textarea
               id="msg-1h"
@@ -152,6 +262,7 @@ export const MensagensAgendadas = () => {
               placeholder="Digite a mensagem que será enviada 1 hora antes do agendamento"
               className="min-h-[120px] bg-background/50"
               rows={5}
+              disabled={!ativa1h}
             />
             <p className="text-xs text-muted-foreground">
               Variáveis disponíveis: {"{hora_agendada}"}, {"{servico}"}, {"{nome_cliente}"}
