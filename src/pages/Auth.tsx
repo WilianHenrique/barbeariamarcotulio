@@ -12,7 +12,7 @@ const Auth = () => {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
   const [isSignUp, setIsSignUp] = useState(false);
-  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
 
   useEffect(() => {
@@ -39,22 +39,51 @@ const Auth = () => {
 
     try {
       if (isSignUp) {
-        const { error } = await supabase.auth.signUp({
-          email,
+        // Criar usuário com email interno
+        const internalEmail = `${username.toLowerCase()}@barbearia.local`;
+        const { data: authData, error: signUpError } = await supabase.auth.signUp({
+          email: internalEmail,
           password,
           options: {
             emailRedirectTo: `${window.location.origin}/`
           }
         });
-        if (error) throw error;
+        
+        if (signUpError) throw signUpError;
+        
+        // Criar perfil com username
+        if (authData.user) {
+          const { error: profileError } = await supabase
+            .from('profiles')
+            .insert({
+              user_id: authData.user.id,
+              username: username.toLowerCase()
+            });
+          
+          if (profileError) {
+            // Se falhar ao criar perfil, deletar o usuário criado
+            await supabase.auth.admin.deleteUser(authData.user.id);
+            throw new Error("Nome de usuário já existe. Escolha outro.");
+          }
+        }
+        
         toast.success("Conta criada com sucesso! Você já pode fazer login.");
         setIsSignUp(false);
       } else {
+        // Buscar email pelo username
+        const { data: emailData, error: emailError } = await supabase
+          .rpc('get_email_by_username', { _username: username.toLowerCase() });
+        
+        if (emailError || !emailData) {
+          throw new Error("Nome de usuário ou senha incorretos");
+        }
+        
         const { error } = await supabase.auth.signInWithPassword({
-          email,
+          email: emailData,
           password,
         });
-        if (error) throw error;
+        
+        if (error) throw new Error("Nome de usuário ou senha incorretos");
         toast.success("Login realizado com sucesso!");
       }
     } catch (error: any) {
@@ -85,13 +114,13 @@ const Auth = () => {
         <CardContent>
           <form onSubmit={handleAuth} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email" className="text-foreground">Email</Label>
+              <Label htmlFor="username" className="text-foreground">Nome de Usuário</Label>
               <Input
-                id="email"
-                type="email"
-                placeholder="seu@email.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                id="username"
+                type="text"
+                placeholder="seu_usuario"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
                 required
                 className="bg-background border-border focus:border-primary focus:ring-primary"
               />
