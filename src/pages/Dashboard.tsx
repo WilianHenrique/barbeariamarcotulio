@@ -75,9 +75,16 @@ const Dashboard = () => {
 
   const loadAgendamentos = async () => {
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        navigate("/auth");
+        return;
+      }
+
       const { data, error } = await supabase
         .from('agendamentos')
         .select('*')
+        .eq('user_id', user.id)
         .order('datetime_start', { ascending: true });
 
       if (error) throw error;

@@ -20,6 +20,7 @@ interface WebhookData {
   tempo_total_minutos: string;
   Status_Evento: string;
   EventoRecorrente: string;
+  user_id?: string; // ID do usuário (opcional para compatibilidade)
 }
 
 serve(async (req) => {
@@ -41,6 +42,18 @@ serve(async (req) => {
 
     // O corpo pode vir como array ou objeto único
     const agendamentos: WebhookData[] = Array.isArray(body) ? body : [body];
+
+    // Determinar user_id: usar o fornecido ou buscar o primeiro usuário
+    let userId = agendamentos[0]?.user_id;
+    if (!userId) {
+      const { data: firstUser } = await supabaseClient.auth.admin.listUsers();
+      if (firstUser && firstUser.users.length > 0) {
+        userId = firstUser.users[0].id;
+        console.log("Usando primeiro usuário disponível:", userId);
+      } else {
+        throw new Error("Nenhum usuário encontrado no sistema");
+      }
+    }
 
     for (const agendamento of agendamentos) {
       // Verificar se já existe pelo id_evento
@@ -64,6 +77,7 @@ serve(async (req) => {
         tempo_total_minutos: parseInt(agendamento.tempo_total_minutos),
         status_evento: agendamento.Status_Evento,
         evento_recorrente: agendamento.EventoRecorrente,
+        user_id: agendamento.user_id || userId, // Usar user_id fornecido ou padrão
       };
 
       if (existente) {

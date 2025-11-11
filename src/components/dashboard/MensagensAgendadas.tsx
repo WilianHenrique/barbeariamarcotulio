@@ -35,16 +35,20 @@ export const MensagensAgendadas = () => {
 
   const loadTemplates = async () => {
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Usuário não autenticado");
+
       const { data, error } = await supabase
         .from("mensagens_template")
         .select("*")
-        .eq("ativo", true)
-        .order("tipo", { ascending: true });
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false });
 
       if (error) throw error;
 
       if (data) {
         setTemplates(data);
+        // Buscar o template mais recente de cada tipo
         const template24h = data.find(t => t.tipo === "24h");
         const template1h = data.find(t => t.tipo === "1h");
         
@@ -72,15 +76,27 @@ export const MensagensAgendadas = () => {
   const handleToggle24h = async (checked: boolean) => {
     setAtiva24h(checked);
     try {
-      // Atualizar apenas o template de 24h
-      const { error } = await supabase
-        .from("mensagens_template")
-        .update({ ativo: checked })
-        .eq("tipo", "24h")
-        .order("created_at", { ascending: false })
-        .limit(1);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Usuário não autenticado");
 
-      if (error) throw error;
+      // Buscar o template mais recente do usuário
+      const { data: template } = await supabase
+        .from("mensagens_template")
+        .select("id")
+        .eq("tipo", "24h")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .single();
+
+      if (template) {
+        const { error } = await supabase
+          .from("mensagens_template")
+          .update({ ativo: checked })
+          .eq("id", template.id);
+
+        if (error) throw error;
+      }
 
       toast({
         title: checked ? "Mensagem 24h ativada" : "Mensagem 24h desativada",
@@ -90,7 +106,7 @@ export const MensagensAgendadas = () => {
       });
     } catch (error) {
       console.error("Erro ao atualizar status:", error);
-      setAtiva24h(!checked); // Reverter em caso de erro
+      setAtiva24h(!checked);
       toast({
         title: "Erro",
         description: "Não foi possível atualizar o status",
@@ -102,15 +118,27 @@ export const MensagensAgendadas = () => {
   const handleToggle1h = async (checked: boolean) => {
     setAtiva1h(checked);
     try {
-      // Atualizar apenas o template de 1h
-      const { error } = await supabase
-        .from("mensagens_template")
-        .update({ ativo: checked })
-        .eq("tipo", "1h")
-        .order("created_at", { ascending: false })
-        .limit(1);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Usuário não autenticado");
 
-      if (error) throw error;
+      // Buscar o template mais recente do usuário
+      const { data: template } = await supabase
+        .from("mensagens_template")
+        .select("id")
+        .eq("tipo", "1h")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .single();
+
+      if (template) {
+        const { error } = await supabase
+          .from("mensagens_template")
+          .update({ ativo: checked })
+          .eq("id", template.id);
+
+        if (error) throw error;
+      }
 
       toast({
         title: checked ? "Mensagem 1h ativada" : "Mensagem 1h desativada",
@@ -120,7 +148,7 @@ export const MensagensAgendadas = () => {
       });
     } catch (error) {
       console.error("Erro ao atualizar status:", error);
-      setAtiva1h(!checked); // Reverter em caso de erro
+      setAtiva1h(!checked);
       toast({
         title: "Erro",
         description: "Não foi possível atualizar o status",
@@ -132,18 +160,21 @@ export const MensagensAgendadas = () => {
   const handleSave = async () => {
     setSaving(true);
     try {
-      // Desativar templates antigos
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Usuário não autenticado");
+
+      // Desativar templates antigos do usuário
       await supabase
         .from("mensagens_template")
         .update({ ativo: false })
-        .eq("ativo", true);
+        .eq("user_id", user.id);
 
       // Inserir novos templates com o status atual
       const { error } = await supabase
         .from("mensagens_template")
         .insert([
-          { tipo: "24h", mensagem: mensagem24h, ativo: ativa24h },
-          { tipo: "1h", mensagem: mensagem1h, ativo: ativa1h },
+          { tipo: "24h", mensagem: mensagem24h, ativo: ativa24h, user_id: user.id },
+          { tipo: "1h", mensagem: mensagem1h, ativo: ativa1h, user_id: user.id },
         ]);
 
       if (error) throw error;

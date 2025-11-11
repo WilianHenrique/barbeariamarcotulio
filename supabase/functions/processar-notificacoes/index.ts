@@ -21,23 +21,6 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    // Buscar templates de mensagens
-    const { data: templates, error: templatesError } = await supabaseClient
-      .from('mensagens_template')
-      .select('*')
-      .order('created_at', { ascending: false });
-
-    if (templatesError) {
-      console.error("Erro ao buscar templates:", templatesError);
-    }
-
-    // Pegar apenas os templates mais recentes de cada tipo
-    const template24h = templates?.find(t => t.tipo === '24h');
-    const template1h = templates?.find(t => t.tipo === '1h');
-
-    console.log(`Template 24h: ${template24h?.ativo ? 'ATIVO' : 'INATIVO'}`);
-    console.log(`Template 1h: ${template1h?.ativo ? 'ATIVO' : 'INATIVO'}`);
-
     const agora = new Date();
     
     // Calcular janelas de tempo (de agora até 24h15min e até 1h15min no futuro)
@@ -78,13 +61,30 @@ serve(async (req) => {
     let notificacoesEnviadas = 0;
 
     // Processar notificações de 24h
-    if (agendamentos24h && agendamentos24h.length > 0 && template24h?.ativo) {
+    if (agendamentos24h && agendamentos24h.length > 0) {
       console.log(`Processando ${agendamentos24h.length} notificações de 24h`);
       
       for (const agendamento of agendamentos24h) {
         try {
+          // Buscar template do usuário
+          const { data: templates } = await supabaseClient
+            .from('mensagens_template')
+            .select('*')
+            .eq('user_id', agendamento.user_id)
+            .eq('tipo', '24h')
+            .eq('ativo', true)
+            .order('created_at', { ascending: false })
+            .limit(1);
+
+          const template24h = templates?.[0];
+
+          if (!template24h) {
+            console.log(`Template 24h não encontrado ou inativo para usuário ${agendamento.user_id}`);
+            continue;
+          }
+
           // Substituir variáveis na mensagem personalizada
-          let mensagemPersonalizada = template24h?.mensagem || "Lembrete: você tem um agendamento amanhã.";
+          let mensagemPersonalizada = template24h.mensagem;
           mensagemPersonalizada = mensagemPersonalizada
             .replace(/{hora_agendada}/g, agendamento.hora_agendada)
             .replace(/{servico}/g, agendamento.servico)
@@ -142,13 +142,30 @@ serve(async (req) => {
     }
 
     // Processar notificações de 1h
-    if (agendamentos1h && agendamentos1h.length > 0 && template1h?.ativo) {
+    if (agendamentos1h && agendamentos1h.length > 0) {
       console.log(`Processando ${agendamentos1h.length} notificações de 1h`);
       
       for (const agendamento of agendamentos1h) {
         try {
+          // Buscar template do usuário
+          const { data: templates } = await supabaseClient
+            .from('mensagens_template')
+            .select('*')
+            .eq('user_id', agendamento.user_id)
+            .eq('tipo', '1h')
+            .eq('ativo', true)
+            .order('created_at', { ascending: false })
+            .limit(1);
+
+          const template1h = templates?.[0];
+
+          if (!template1h) {
+            console.log(`Template 1h não encontrado ou inativo para usuário ${agendamento.user_id}`);
+            continue;
+          }
+
           // Substituir variáveis na mensagem personalizada
-          let mensagemPersonalizada = template1h?.mensagem || "Lembrete: seu horário é daqui a 1 hora.";
+          let mensagemPersonalizada = template1h.mensagem;
           mensagemPersonalizada = mensagemPersonalizada
             .replace(/{hora_agendada}/g, agendamento.hora_agendada)
             .replace(/{servico}/g, agendamento.servico)
