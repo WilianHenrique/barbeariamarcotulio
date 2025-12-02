@@ -13,6 +13,7 @@ import { AgendamentosTable } from "@/components/dashboard/AgendamentosTable";
 import { ClienteHistorico } from "@/components/dashboard/ClienteHistorico";
 import { RelatorioGeral } from "@/components/dashboard/RelatorioGeral";
 import { MensagensAgendadas } from "@/components/dashboard/MensagensAgendadas";
+import { NovoAgendamento } from "@/components/dashboard/NovoAgendamento";
 
 interface Agendamento {
   id: string;
@@ -308,6 +309,12 @@ const Dashboard = () => {
             agendamentos={clienteSelecionado}
           />
         )}
+
+        {/* Novo Agendamento - Primeira seção */}
+        <NovoAgendamento 
+          onAgendamentoCriado={loadAgendamentos} 
+          agendamentosExistentes={agendamentos}
+        />
 
         {/* Tabs de Navegação */}
         <Tabs defaultValue="pendentes" className="space-y-6">
