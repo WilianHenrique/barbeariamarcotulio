@@ -32,6 +32,7 @@ export type Database = {
           notificacao_24h_enviada: boolean | null
           servico: string
           status_evento: string
+          telefone_cliente: string | null
           tempo_total_minutos: number
           updated_at: string
           user_id: string | null
@@ -53,6 +54,7 @@ export type Database = {
           notificacao_24h_enviada?: boolean | null
           servico: string
           status_evento: string
+          telefone_cliente?: string | null
           tempo_total_minutos: number
           updated_at?: string
           user_id?: string | null
@@ -74,6 +76,7 @@ export type Database = {
           notificacao_24h_enviada?: boolean | null
           servico?: string
           status_evento?: string
+          telefone_cliente?: string | null
           tempo_total_minutos?: number
           updated_at?: string
           user_id?: string | null
