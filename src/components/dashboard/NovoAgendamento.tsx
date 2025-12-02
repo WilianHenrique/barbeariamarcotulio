@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,11 +7,16 @@ import { Badge } from "@/components/ui/badge";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { Calendar, Clock, User, Scissors, CheckCircle2, CalendarDays, CalendarRange, LayoutGrid, ChevronLeft, ChevronRight, Repeat } from "lucide-react";
+import { Calendar, Clock, User, Scissors, CheckCircle2, CalendarDays, CalendarRange, LayoutGrid, ChevronLeft, ChevronRight, Repeat, Phone, Pencil, Search } from "lucide-react";
 import { format, addDays, startOfWeek, endOfWeek, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, addWeeks, addMonths, isToday, isBefore, startOfDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+
+interface ClienteSugestao {
+  nome_cliente: string;
+  telefone_cliente: string | null;
+}
 
 interface Agendamento {
   id: string;
@@ -49,6 +54,11 @@ interface NovoAgendamentoProps {
 
 export const NovoAgendamento = ({ onAgendamentoCriado, agendamentosExistentes }: NovoAgendamentoProps) => {
   const [nomeCliente, setNomeCliente] = useState("");
+  const [telefoneCliente, setTelefoneCliente] = useState("");
+  const [telefoneEditavel, setTelefoneEditavel] = useState(true);
+  const [clientesSugestoes, setClientesSugestoes] = useState<ClienteSugestao[]>([]);
+  const [showSugestoes, setShowSugestoes] = useState(false);
+  const [buscandoClientes, setBuscandoClientes] = useState(false);
   const [servicoSelecionado, setServicoSelecionado] = useState<string | null>(null);
   const [tempoServico, setTempoServico] = useState(30);
   const [dataSelecionada, setDataSelecionada] = useState<Date>(new Date());
@@ -59,6 +69,7 @@ export const NovoAgendamento = ({ onAgendamentoCriado, agendamentosExistentes }:
   const [recorrenciaPersonalizada, setRecorrenciaPersonalizada] = useState(2); // semanas
   const [showConfirmacao, setShowConfirmacao] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const sugestoesRef = useRef<HTMLDivElement>(null);
 
   // Atualiza tempo sugerido quando seleciona serviço
   useEffect(() => {
@@ -69,6 +80,74 @@ export const NovoAgendamento = ({ onAgendamentoCriado, agendamentosExistentes }:
       }
     }
   }, [servicoSelecionado]);
+
+  // Buscar clientes conforme digita
+  useEffect(() => {
+    const buscarClientes = async () => {
+      if (nomeCliente.length < 2) {
+        setClientesSugestoes([]);
+        setShowSugestoes(false);
+        return;
+      }
+
+      setBuscandoClientes(true);
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+
+        const { data, error } = await supabase
+          .from('agendamentos')
+          .select('nome_cliente, telefone_cliente')
+          .eq('user_id', user.id)
+          .ilike('nome_cliente', `%${nomeCliente}%`)
+          .order('created_at', { ascending: false });
+
+        if (error) throw error;
+
+        // Remover duplicatas baseado no nome
+        const clientesUnicos = data?.reduce((acc: ClienteSugestao[], curr) => {
+          const existe = acc.find(c => c.nome_cliente.toLowerCase() === curr.nome_cliente.toLowerCase());
+          if (!existe) {
+            acc.push({
+              nome_cliente: curr.nome_cliente,
+              telefone_cliente: curr.telefone_cliente
+            });
+          }
+          return acc;
+        }, []) || [];
+
+        setClientesSugestoes(clientesUnicos);
+        setShowSugestoes(clientesUnicos.length > 0);
+      } catch (error) {
+        console.error('Erro ao buscar clientes:', error);
+      } finally {
+        setBuscandoClientes(false);
+      }
+    };
+
+    const debounce = setTimeout(buscarClientes, 300);
+    return () => clearTimeout(debounce);
+  }, [nomeCliente]);
+
+  // Fechar sugestões ao clicar fora
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (sugestoesRef.current && !sugestoesRef.current.contains(event.target as Node)) {
+        setShowSugestoes(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Selecionar cliente da lista
+  const selecionarCliente = (cliente: ClienteSugestao) => {
+    setNomeCliente(cliente.nome_cliente);
+    setTelefoneCliente(cliente.telefone_cliente || '');
+    setTelefoneEditavel(!cliente.telefone_cliente);
+    setShowSugestoes(false);
+  };
 
   // Gera horários disponíveis para um dia
   const gerarHorariosDisponiveis = (data: Date) => {
@@ -193,6 +272,7 @@ export const NovoAgendamento = ({ onAgendamentoCriado, agendamentosExistentes }:
         return {
           user_id: user.id,
           nome_cliente: nomeCliente,
+          telefone_cliente: telefoneCliente || null,
           servico: servico?.nome || '',
           datetime_start: datetimeStart.toISOString(),
           datetime_end: datetimeEnd.toISOString(),
@@ -219,6 +299,8 @@ export const NovoAgendamento = ({ onAgendamentoCriado, agendamentosExistentes }:
       
       // Reset form
       setNomeCliente("");
+      setTelefoneCliente("");
+      setTelefoneEditavel(true);
       setServicoSelecionado(null);
       setHorarioSelecionado(null);
       setTipoRecorrencia("unico");
@@ -245,18 +327,89 @@ export const NovoAgendamento = ({ onAgendamentoCriado, agendamentosExistentes }:
       <CardContent className="p-6 space-y-6">
         {/* Dados do Cliente */}
         <div className="space-y-4">
-          <div className="space-y-2">
+          <div className="space-y-2 relative" ref={sugestoesRef}>
             <Label htmlFor="nome" className="text-foreground flex items-center gap-2">
               <User className="h-4 w-4 text-primary" />
               Nome do Cliente
             </Label>
-            <Input
-              id="nome"
-              value={nomeCliente}
-              onChange={(e) => setNomeCliente(e.target.value)}
-              placeholder="Digite o nome do cliente"
-              className="bg-secondary/50 border-border focus:border-primary"
-            />
+            <div className="relative">
+              <Input
+                id="nome"
+                value={nomeCliente}
+                onChange={(e) => {
+                  setNomeCliente(e.target.value);
+                  setTelefoneEditavel(true);
+                }}
+                placeholder="Digite o nome do cliente"
+                className="bg-secondary/50 border-border focus:border-primary pr-10"
+              />
+              {buscandoClientes ? (
+                <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                  <div className="animate-spin h-4 w-4 border-2 border-primary border-t-transparent rounded-full" />
+                </div>
+              ) : (
+                <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              )}
+            </div>
+            
+            {/* Lista de sugestões */}
+            {showSugestoes && clientesSugestoes.length > 0 && (
+              <div className="absolute z-50 w-full mt-1 bg-card border border-border rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                {clientesSugestoes.map((cliente, index) => (
+                  <button
+                    key={index}
+                    type="button"
+                    onClick={() => selecionarCliente(cliente)}
+                    className="w-full px-4 py-3 text-left hover:bg-primary/10 transition-colors flex items-center justify-between border-b border-border last:border-b-0"
+                  >
+                    <div>
+                      <span className="font-medium text-foreground">{cliente.nome_cliente}</span>
+                      {cliente.telefone_cliente && (
+                        <span className="text-sm text-muted-foreground ml-2">
+                          ({cliente.telefone_cliente})
+                        </span>
+                      )}
+                    </div>
+                    <Badge variant="outline" className="text-xs">Cliente existente</Badge>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Campo de WhatsApp */}
+          <div className="space-y-2">
+            <Label htmlFor="telefone" className="text-foreground flex items-center gap-2">
+              <Phone className="h-4 w-4 text-primary" />
+              WhatsApp do Cliente
+            </Label>
+            <div className="flex gap-2">
+              <Input
+                id="telefone"
+                value={telefoneCliente}
+                onChange={(e) => setTelefoneCliente(e.target.value)}
+                placeholder="(00) 00000-0000"
+                className="bg-secondary/50 border-border focus:border-primary flex-1"
+                disabled={!telefoneEditavel}
+              />
+              {!telefoneEditavel && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setTelefoneEditavel(true)}
+                  className="shrink-0"
+                  title="Editar número"
+                >
+                  <Pencil className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
+            {!telefoneEditavel && (
+              <p className="text-xs text-muted-foreground">
+                Número já cadastrado. Clique no lápis para editar.
+              </p>
+            )}
           </div>
         </div>
 
