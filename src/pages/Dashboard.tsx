@@ -13,8 +13,8 @@ import { AgendamentosTable } from "@/components/dashboard/AgendamentosTable";
 import { ClienteHistorico } from "@/components/dashboard/ClienteHistorico";
 import { RelatorioGeral } from "@/components/dashboard/RelatorioGeral";
 import { MensagensAgendadas } from "@/components/dashboard/MensagensAgendadas";
-import { NovoAgendamento } from "@/components/dashboard/NovoAgendamento";
-
+import { CalendarioSemanal } from "@/components/dashboard/CalendarioSemanal";
+import { NovoAgendamentoDialog } from "@/components/dashboard/NovoAgendamentoDialog";
 interface Agendamento {
   id: string;
   id_evento: string;
@@ -39,6 +39,8 @@ const Dashboard = () => {
   const [now, setNow] = useState(Date.now());
   const [searchTerm, setSearchTerm] = useState("");
   const [periodFilter, setPeriodFilter] = useState("all");
+  const [showNovoAgendamento, setShowNovoAgendamento] = useState(false);
+  
   useEffect(() => {
     checkAuth();
     loadAgendamentos();
@@ -310,9 +312,17 @@ const Dashboard = () => {
           />
         )}
 
-        {/* Novo Agendamento - Primeira seção */}
-        <NovoAgendamento 
-          onAgendamentoCriado={loadAgendamentos} 
+        {/* Calendário Semanal estilo Google Agenda */}
+        <CalendarioSemanal
+          agendamentos={agendamentos}
+          onNovoAgendamento={() => setShowNovoAgendamento(true)}
+        />
+        
+        {/* Dialog de Novo Agendamento */}
+        <NovoAgendamentoDialog
+          open={showNovoAgendamento}
+          onOpenChange={setShowNovoAgendamento}
+          onAgendamentoCriado={loadAgendamentos}
           agendamentosExistentes={agendamentos}
         />
 
