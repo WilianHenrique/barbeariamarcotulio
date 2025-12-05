@@ -1,9 +1,8 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
-import { format, addWeeks, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay, isToday, addHours, isBefore, startOfDay } from "date-fns";
+import { format, addWeeks, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay, isToday, isBefore, startOfDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 interface Agendamento {
@@ -39,12 +38,31 @@ const CORES_AGENDAMENTOS = [
 
 const HORARIOS = Array.from({ length: 13 }, (_, i) => 8 + i); // 08:00 até 20:00
 
+// Função para obter hora atual em Brasília (UTC-3)
+const getBrasiliaTime = () => {
+  const now = new Date();
+  // Brasília está em UTC-3
+  const brasiliaOffset = -3 * 60; // em minutos
+  const localOffset = now.getTimezoneOffset(); // em minutos
+  const diff = brasiliaOffset - (-localOffset);
+  return new Date(now.getTime() + diff * 60 * 1000);
+};
+
 export const CalendarioSemanal = ({ 
   agendamentos, 
   onNovoAgendamento,
   onSelecionarAgendamento 
 }: CalendarioSemanalProps) => {
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [currentTime, setCurrentTime] = useState(getBrasiliaTime());
+
+  // Atualiza o horário atual a cada minuto
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentTime(getBrasiliaTime());
+    }, 60000); // Atualiza a cada minuto
+    return () => clearInterval(interval);
+  }, []);
   
   // Mapa de cores para clientes (mantém cor consistente para mesmo cliente)
   const clienteCorMap = useMemo(() => {
@@ -196,10 +214,19 @@ export const CalendarioSemanal = ({
                 ))}
               </div>
 
-              {/* Colunas de dias */}
+                {/* Colunas de dias */}
               {diasSemana.map((dia) => {
                 const agendamentosDia = getAgendamentosDia(dia);
                 const isPast = isBefore(startOfDay(dia), startOfDay(new Date()));
+                const showCurrentTimeLine = isToday(dia);
+                
+                // Calcula a posição da linha do horário atual
+                const currentHour = currentTime.getHours();
+                const currentMinute = currentTime.getMinutes();
+                const isWithinSchedule = currentHour >= 8 && currentHour < 20;
+                const timeLinePosition = isWithinSchedule 
+                  ? ((currentHour - 8) * 60 + currentMinute) / (12 * 60) * 100 
+                  : -1;
                 
                 return (
                   <div 
@@ -215,6 +242,17 @@ export const CalendarioSemanal = ({
                         className="h-16 border-b border-border/50 hover:bg-primary/5 transition-colors"
                       />
                     ))}
+                    
+                    {/* Linha indicadora do horário atual */}
+                    {showCurrentTimeLine && isWithinSchedule && (
+                      <div 
+                        className="absolute left-0 right-0 z-20 pointer-events-none flex items-center"
+                        style={{ top: `${timeLinePosition}%` }}
+                      >
+                        <div className="w-3 h-3 bg-red-500 rounded-full -ml-1.5 shadow-md" />
+                        <div className="flex-1 h-0.5 bg-red-500 shadow-sm" />
+                      </div>
+                    )}
                     
                     {/* Agendamentos */}
                     <div className="absolute inset-0 pointer-events-none">
