@@ -1,0 +1,484 @@
+import { useState, useEffect, useRef } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar, Clock, User, Scissors, Phone, Pencil, Check, ChevronDown } from "lucide-react";
+import { format, isSameDay, isBefore } from "date-fns";
+import { ptBR } from "date-fns/locale";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import { cn } from "@/lib/utils";
+
+interface ClienteSugestao {
+  nome_cliente: string;
+  telefone_cliente: string | null;
+}
+
+interface Agendamento {
+  id: string;
+  datetime_start: string;
+  datetime_end: string;
+  dia_agendado: string;
+  hora_agendada: string;
+  hora_final: string;
+  servico: string;
+  tempo_total_minutos: number;
+}
+
+const SERVICOS = [
+  { id: "barba", nome: "Barba", tempo: 30 },
+  { id: "cabelo", nome: "Cabelo", tempo: 45 },
+  { id: "sobrancelha", nome: "Sobrancelha", tempo: 15 },
+  { id: "barba_cabelo", nome: "Barba + Cabelo", tempo: 60 },
+  { id: "pezinho", nome: "Pezinho", tempo: 15 },
+  { id: "combo", nome: "Barba + Cabelo + Sobrancelha", tempo: 75 },
+];
+
+const formatarTelefone = (value: string) => {
+  const numeros = value.replace(/\D/g, '');
+  if (numeros.length <= 2) return numeros.length > 0 ? `(${numeros}` : '';
+  if (numeros.length <= 3) return `(${numeros.slice(0, 2)}) ${numeros.slice(2)}`;
+  if (numeros.length <= 7) return `(${numeros.slice(0, 2)}) ${numeros.slice(2, 3)} ${numeros.slice(3)}`;
+  if (numeros.length <= 11) return `(${numeros.slice(0, 2)}) ${numeros.slice(2, 3)} ${numeros.slice(3, 7)}-${numeros.slice(7)}`;
+  return `(${numeros.slice(0, 2)}) ${numeros.slice(2, 3)} ${numeros.slice(3, 7)}-${numeros.slice(7, 11)}`;
+};
+
+const validarTelefone = (telefone: string) => {
+  const numeros = telefone.replace(/\D/g, '');
+  return numeros.length === 11;
+};
+
+interface AppointmentDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSuccess: () => void;
+  agendamentosExistentes: Agendamento[];
+}
+
+export const AppointmentDialog = ({ 
+  open, 
+  onOpenChange, 
+  onSuccess, 
+  agendamentosExistentes 
+}: AppointmentDialogProps) => {
+  const [step, setStep] = useState(1);
+  const [nomeCliente, setNomeCliente] = useState("");
+  const [telefoneCliente, setTelefoneCliente] = useState("");
+  const [telefoneEditavel, setTelefoneEditavel] = useState(true);
+  const [clientesSugestoes, setClientesSugestoes] = useState<ClienteSugestao[]>([]);
+  const [showSugestoes, setShowSugestoes] = useState(false);
+  const [servicoSelecionado, setServicoSelecionado] = useState<typeof SERVICOS[0] | null>(null);
+  const [tempoServico, setTempoServico] = useState(30);
+  const [dataSelecionada, setDataSelecionada] = useState<Date>(new Date());
+  const [horarioSelecionado, setHorarioSelecionado] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const sugestoesRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (open) {
+      setStep(1);
+      setNomeCliente("");
+      setTelefoneCliente("");
+      setTelefoneEditavel(true);
+      setServicoSelecionado(null);
+      setHorarioSelecionado(null);
+      setDataSelecionada(new Date());
+    }
+  }, [open]);
+
+  useEffect(() => {
+    if (servicoSelecionado) {
+      setTempoServico(servicoSelecionado.tempo);
+    }
+  }, [servicoSelecionado]);
+
+  useEffect(() => {
+    const buscarClientes = async () => {
+      if (nomeCliente.length < 2) {
+        setClientesSugestoes([]);
+        setShowSugestoes(false);
+        return;
+      }
+
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+
+        const { data } = await supabase
+          .from('agendamentos')
+          .select('nome_cliente, telefone_cliente')
+          .eq('user_id', user.id)
+          .ilike('nome_cliente', `%${nomeCliente}%`)
+          .order('created_at', { ascending: false });
+
+        const clientesUnicos = data?.reduce((acc: ClienteSugestao[], curr) => {
+          const existe = acc.find(c => c.nome_cliente.toLowerCase() === curr.nome_cliente.toLowerCase());
+          if (!existe) acc.push({ nome_cliente: curr.nome_cliente, telefone_cliente: curr.telefone_cliente });
+          return acc;
+        }, []) || [];
+
+        setClientesSugestoes(clientesUnicos);
+        setShowSugestoes(clientesUnicos.length > 0);
+      } catch (error) {
+        console.error('Erro ao buscar clientes:', error);
+      }
+    };
+
+    const debounce = setTimeout(buscarClientes, 300);
+    return () => clearTimeout(debounce);
+  }, [nomeCliente]);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (sugestoesRef.current && !sugestoesRef.current.contains(event.target as Node)) {
+        setShowSugestoes(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const selecionarCliente = (cliente: ClienteSugestao) => {
+    setNomeCliente(cliente.nome_cliente);
+    setTelefoneCliente(cliente.telefone_cliente ? formatarTelefone(cliente.telefone_cliente) : '');
+    setTelefoneEditavel(!cliente.telefone_cliente);
+    setShowSugestoes(false);
+  };
+
+  const gerarHorariosDisponiveis = () => {
+    const horarios: string[] = [];
+    for (let hora = 8; hora < 20; hora++) {
+      for (let minuto = 0; minuto < 60; minuto += 30) {
+        horarios.push(`${hora.toString().padStart(2, '0')}:${minuto.toString().padStart(2, '0')}`);
+      }
+    }
+    return horarios;
+  };
+
+  const isHorarioOcupado = (horario: string) => {
+    const [hora, minuto] = horario.split(':').map(Number);
+    const inicioNovo = new Date(dataSelecionada);
+    inicioNovo.setHours(hora, minuto, 0, 0);
+    const fimNovo = new Date(inicioNovo.getTime() + tempoServico * 60 * 1000);
+
+    return agendamentosExistentes.some(ag => {
+      const inicioExistente = new Date(ag.datetime_start);
+      const fimExistente = new Date(ag.datetime_end);
+      
+      return (
+        isSameDay(inicioExistente, dataSelecionada) &&
+        ((inicioNovo >= inicioExistente && inicioNovo < fimExistente) ||
+         (fimNovo > inicioExistente && fimNovo <= fimExistente) ||
+         (inicioNovo <= inicioExistente && fimNovo >= fimExistente))
+      );
+    });
+  };
+
+  const isHorarioPassado = (horario: string) => {
+    const [hora, minuto] = horario.split(':').map(Number);
+    const dataHorario = new Date(dataSelecionada);
+    dataHorario.setHours(hora, minuto, 0, 0);
+    return isBefore(dataHorario, new Date());
+  };
+
+  const criarAgendamento = async () => {
+    if (!nomeCliente || !servicoSelecionado || !horarioSelecionado) {
+      toast.error("Preencha todos os campos");
+      return;
+    }
+
+    if (telefoneCliente && !validarTelefone(telefoneCliente)) {
+      toast.error("Número de WhatsApp inválido");
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const [hora, minuto] = horarioSelecionado.split(':').map(Number);
+      const datetimeStart = new Date(dataSelecionada);
+      datetimeStart.setHours(hora, minuto, 0, 0);
+      const datetimeEnd = new Date(datetimeStart.getTime() + tempoServico * 60 * 1000);
+
+      const { error } = await supabase.from('agendamentos').insert({
+        user_id: user.id,
+        nome_cliente: nomeCliente,
+        telefone_cliente: telefoneCliente.replace(/\D/g, '') || null,
+        servico: servicoSelecionado.nome,
+        datetime_start: datetimeStart.toISOString(),
+        datetime_end: datetimeEnd.toISOString(),
+        dia_agendado: format(dataSelecionada, 'yyyy-MM-dd'),
+        dia_agendado_formatado: format(dataSelecionada, "dd 'de' MMMM 'de' yyyy", { locale: ptBR }),
+        hora_agendada: horarioSelecionado,
+        hora_final: format(datetimeEnd, 'HH:mm'),
+        tempo_total_minutos: tempoServico,
+        evento_recorrente: 'Não',
+        status_evento: 'confirmado',
+        link_evento: '',
+        id_evento: `manual-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      });
+
+      if (error) throw error;
+
+      toast.success("Agendamento criado com sucesso!");
+      onSuccess();
+      onOpenChange(false);
+    } catch (error: any) {
+      toast.error("Erro ao criar agendamento");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const horarios = gerarHorariosDisponiveis();
+  const canProceedStep1 = nomeCliente.trim().length > 0 && servicoSelecionado;
+  const canProceedStep2 = horarioSelecionado;
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="bg-card border-border max-w-lg">
+        <DialogHeader>
+          <DialogTitle className="font-display text-xl text-foreground flex items-center gap-2">
+            <Calendar className="h-5 w-5 text-primary" />
+            Novo Agendamento
+          </DialogTitle>
+        </DialogHeader>
+
+        {/* Progress Steps */}
+        <div className="flex items-center gap-2 py-2">
+          {[1, 2, 3].map((s) => (
+            <div key={s} className="flex-1 flex items-center gap-2">
+              <div className={cn(
+                "w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-colors",
+                step >= s ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground"
+              )}>
+                {step > s ? <Check className="w-4 h-4" /> : s}
+              </div>
+              {s < 3 && <div className={cn("flex-1 h-0.5", step > s ? "bg-primary" : "bg-secondary")} />}
+            </div>
+          ))}
+        </div>
+
+        <div className="space-y-4 py-2">
+          {/* Step 1: Cliente e Serviço */}
+          {step === 1 && (
+            <div className="space-y-4 animate-fadeIn">
+              <div className="space-y-2 relative" ref={sugestoesRef}>
+                <Label className="text-foreground text-sm flex items-center gap-2">
+                  <User className="h-4 w-4 text-primary" />
+                  Nome do Cliente
+                </Label>
+                <Input
+                  value={nomeCliente}
+                  onChange={(e) => { setNomeCliente(e.target.value); setTelefoneEditavel(true); }}
+                  placeholder="Digite o nome"
+                  className="input-refined"
+                />
+                
+                {showSugestoes && (
+                  <div className="absolute z-50 w-full mt-1 bg-popover border border-border rounded-lg shadow-lg max-h-40 overflow-y-auto">
+                    {clientesSugestoes.map((cliente, i) => (
+                      <button
+                        key={i}
+                        onClick={() => selecionarCliente(cliente)}
+                        className="w-full px-3 py-2.5 text-left hover:bg-secondary transition-colors flex items-center justify-between"
+                      >
+                        <span className="text-foreground text-sm">{cliente.nome_cliente}</span>
+                        <span className="text-xs text-muted-foreground">Cliente existente</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-foreground text-sm flex items-center gap-2">
+                  <Phone className="h-4 w-4 text-primary" />
+                  WhatsApp
+                </Label>
+                <div className="flex gap-2">
+                  <Input
+                    value={telefoneCliente}
+                    onChange={(e) => setTelefoneCliente(formatarTelefone(e.target.value))}
+                    placeholder="(xx) x xxxx-xxxx"
+                    className="input-refined flex-1"
+                    disabled={!telefoneEditavel}
+                    maxLength={17}
+                  />
+                  {!telefoneEditavel && (
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => setTelefoneEditavel(true)}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-foreground text-sm flex items-center gap-2">
+                  <Scissors className="h-4 w-4 text-primary" />
+                  Serviço
+                </Label>
+                <div className="grid grid-cols-2 gap-2">
+                  {SERVICOS.map((servico) => (
+                    <button
+                      key={servico.id}
+                      onClick={() => setServicoSelecionado(servico)}
+                      className={cn(
+                        "p-3 rounded-lg border text-left transition-all text-sm",
+                        servicoSelecionado?.id === servico.id
+                          ? "border-primary bg-primary/10 text-foreground"
+                          : "border-border bg-secondary/30 text-muted-foreground hover:border-border hover:bg-secondary/50"
+                      )}
+                    >
+                      <span className="font-medium block">{servico.nome}</span>
+                      <span className="text-xs opacity-70">{servico.tempo} min</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <Button
+                onClick={() => setStep(2)}
+                disabled={!canProceedStep1}
+                className="w-full btn-primary"
+              >
+                Continuar
+              </Button>
+            </div>
+          )}
+
+          {/* Step 2: Data e Hora */}
+          {step === 2 && (
+            <div className="space-y-4 animate-fadeIn">
+              <div className="space-y-2">
+                <Label className="text-foreground text-sm">Data</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className="w-full justify-between font-normal">
+                      {format(dataSelecionada, "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
+                      <ChevronDown className="h-4 w-4 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <CalendarComponent
+                      mode="single"
+                      selected={dataSelecionada}
+                      onSelect={(date) => date && setDataSelecionada(date)}
+                      disabled={(date) => isBefore(date, new Date(new Date().setHours(0,0,0,0)))}
+                      locale={ptBR}
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-foreground text-sm flex items-center gap-2">
+                  <Clock className="h-4 w-4 text-primary" />
+                  Horário
+                </Label>
+                <div className="grid grid-cols-4 gap-2 max-h-48 overflow-y-auto custom-scrollbar p-1">
+                  {horarios.map((horario) => {
+                    const ocupado = isHorarioOcupado(horario);
+                    const passado = isHorarioPassado(horario);
+                    const disabled = ocupado || passado;
+
+                    return (
+                      <button
+                        key={horario}
+                        onClick={() => !disabled && setHorarioSelecionado(horario)}
+                        disabled={disabled}
+                        className={cn(
+                          "py-2 px-3 rounded-md text-sm font-medium transition-all",
+                          horarioSelecionado === horario
+                            ? "bg-primary text-primary-foreground"
+                            : disabled
+                              ? "bg-secondary/30 text-muted-foreground/50 cursor-not-allowed"
+                              : "bg-secondary text-foreground hover:bg-secondary/80"
+                        )}
+                      >
+                        {horario}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={() => setStep(1)} className="flex-1">
+                  Voltar
+                </Button>
+                <Button
+                  onClick={() => setStep(3)}
+                  disabled={!canProceedStep2}
+                  className="flex-1 btn-primary"
+                >
+                  Continuar
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Step 3: Confirmação */}
+          {step === 3 && (
+            <div className="space-y-4 animate-fadeIn">
+              <div className="bg-secondary/30 rounded-lg p-4 space-y-3">
+                <h4 className="font-medium text-foreground">Resumo do Agendamento</h4>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Cliente:</span>
+                    <span className="text-foreground font-medium">{nomeCliente}</span>
+                  </div>
+                  {telefoneCliente && (
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">WhatsApp:</span>
+                      <span className="text-foreground">{telefoneCliente}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Serviço:</span>
+                    <span className="text-foreground">{servicoSelecionado?.nome}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Data:</span>
+                    <span className="text-foreground">{format(dataSelecionada, "dd/MM/yyyy")}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Horário:</span>
+                    <span className="text-foreground">{horarioSelecionado}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Duração:</span>
+                    <span className="text-foreground">{tempoServico} minutos</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={() => setStep(2)} className="flex-1">
+                  Voltar
+                </Button>
+                <Button
+                  onClick={criarAgendamento}
+                  disabled={isLoading}
+                  className="flex-1 btn-primary"
+                >
+                  {isLoading ? "Salvando..." : "Confirmar"}
+                </Button>
+              </div>
+            </div>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+};

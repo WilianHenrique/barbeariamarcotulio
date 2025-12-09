@@ -2,87 +2,86 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
+/* Design System - Barbearia Marco Túlio
+   Tema: Profissional, Elegante, Moderno
 */
 
 @layer base {
   :root {
-    /* Tema Barbearia Premium - Moderno e Sofisticado */
-    --background: 220 20% 7%;
+    /* Paleta Principal - Tons Escuros Sofisticados */
+    --background: 220 16% 6%;
     --foreground: 210 20% 98%;
 
-    --card: 220 18% 10%;
+    --card: 220 14% 9%;
     --card-foreground: 210 20% 98%;
 
-    --popover: 220 20% 8%;
+    --popover: 220 16% 8%;
     --popover-foreground: 210 20% 98%;
 
-    --primary: 35 100% 65%;
-    --primary-foreground: 220 20% 7%;
+    /* Dourado Premium */
+    --primary: 38 92% 55%;
+    --primary-foreground: 220 16% 6%;
 
-    --secondary: 220 15% 15%;
+    --secondary: 220 12% 14%;
     --secondary-foreground: 210 20% 98%;
 
-    --muted: 220 15% 18%;
-    --muted-foreground: 210 10% 65%;
+    --muted: 220 12% 18%;
+    --muted-foreground: 210 10% 55%;
 
-    --accent: 15 85% 55%;
+    /* Vermelho Elegante */
+    --accent: 0 72% 55%;
     --accent-foreground: 210 20% 98%;
 
-    --destructive: 0 80% 55%;
+    --destructive: 0 72% 50%;
     --destructive-foreground: 210 20% 98%;
 
-    --border: 220 15% 22%;
-    --input: 220 15% 20%;
-    --ring: 35 100% 65%;
+    /* Verde Sucesso */
+    --success: 142 72% 45%;
+    --success-foreground: 210 20% 98%;
 
-    --radius: 0.75rem;
+    --border: 220 12% 16%;
+    --input: 220 12% 12%;
+    --ring: 38 92% 55%;
 
-    /* Gradientes Premium */
-    --gradient-primary: linear-gradient(135deg, hsl(35 100% 65%), hsl(38 100% 75%));
-    --gradient-accent: linear-gradient(135deg, hsl(15 85% 55%), hsl(15 75% 45%));
-    --gradient-dark: linear-gradient(180deg, hsl(220 20% 7%), hsl(220 18% 9%));
-    --gradient-card: linear-gradient(135deg, hsl(220 18% 10%) 0%, hsl(220 18% 11%) 100%);
-    
-    /* Sombras Premium */
-    --shadow-glow: 0 8px 32px hsl(35 100% 65% / 0.25);
-    --shadow-glow-strong: 0 12px 48px hsl(35 100% 65% / 0.4);
-    --shadow-accent: 0 8px 32px hsl(15 85% 55% / 0.2);
-    --shadow-card: 0 4px 20px hsl(220 20% 7% / 0.5);
-    
-    /* Transições */
-    --transition-smooth: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+    --radius: 0.625rem;
+
+    /* Sidebar */
+    --sidebar-background: 220 14% 7%;
+    --sidebar-foreground: 210 20% 98%;
+    --sidebar-primary: 38 92% 55%;
+    --sidebar-primary-foreground: 220 16% 6%;
+    --sidebar-accent: 220 12% 14%;
+    --sidebar-accent-foreground: 210 20% 98%;
+    --sidebar-border: 220 12% 14%;
+    --sidebar-ring: 38 92% 55%;
+
+    /* Sombras e Efeitos */
+    --shadow-sm: 0 1px 2px hsl(220 16% 4% / 0.5);
+    --shadow-md: 0 4px 12px hsl(220 16% 4% / 0.4);
+    --shadow-lg: 0 8px 24px hsl(220 16% 4% / 0.5);
+    --shadow-glow: 0 0 20px hsl(38 92% 55% / 0.15);
   }
 
   .dark {
-    --background: 220 20% 7%;
+    --background: 220 16% 6%;
     --foreground: 210 20% 98%;
-
-    --card: 220 18% 10%;
+    --card: 220 14% 9%;
     --card-foreground: 210 20% 98%;
-
-    --popover: 220 20% 8%;
+    --popover: 220 16% 8%;
     --popover-foreground: 210 20% 98%;
-
-    --primary: 35 100% 65%;
-    --primary-foreground: 220 20% 7%;
-
-    --secondary: 220 15% 15%;
+    --primary: 38 92% 55%;
+    --primary-foreground: 220 16% 6%;
+    --secondary: 220 12% 14%;
     --secondary-foreground: 210 20% 98%;
-
-    --muted: 220 15% 18%;
-    --muted-foreground: 210 10% 65%;
-
-    --accent: 15 85% 55%;
+    --muted: 220 12% 18%;
+    --muted-foreground: 210 10% 55%;
+    --accent: 0 72% 55%;
     --accent-foreground: 210 20% 98%;
-
-    --destructive: 0 80% 55%;
+    --destructive: 0 72% 50%;
     --destructive-foreground: 210 20% 98%;
-
-    --border: 220 15% 22%;
-    --input: 220 15% 20%;
-    --ring: 35 100% 65%;
+    --border: 220 12% 16%;
+    --input: 220 12% 12%;
+    --ring: 38 92% 55%;
   }
 }
 
@@ -92,47 +91,119 @@ All colors MUST be HSL.
   }
 
   body {
-    @apply bg-background text-foreground;
-    font-family: 'Inter', sans-serif;
+    @apply bg-background text-foreground antialiased;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-weight: 400;
-    letter-spacing: -0.01em;
+    font-feature-settings: 'cv11', 'ss01';
+    letter-spacing: -0.011em;
   }
 
   h1, h2, h3, h4, h5, h6 {
-    font-family: 'Oswald', sans-serif;
-    font-weight: 600;
+    font-family: 'Oswald', 'Impact', sans-serif;
+    font-weight: 500;
     letter-spacing: 0.02em;
-    text-transform: uppercase;
+  }
+}
+
+@layer components {
+  /* Cards Elegantes */
+  .elegant-card {
+    @apply bg-card border border-border/50 rounded-xl;
+    box-shadow: var(--shadow-sm);
+    transition: all 0.2s ease;
   }
 
-  /* Cards com estilo premium */
-  .barber-card {
-    background: var(--gradient-card);
-    box-shadow: var(--shadow-card);
-    border: 1px solid hsl(var(--border));
-    transition: var(--transition-smooth);
-    backdrop-filter: blur(10px);
+  .elegant-card:hover {
+    @apply border-border;
+    box-shadow: var(--shadow-md);
   }
 
-  .barber-card:hover {
-    box-shadow: var(--shadow-glow);
-    border-color: hsl(var(--primary) / 0.4);
-    transform: translateY(-2px);
+  /* Botão Principal Dourado */
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2.5 
+           bg-primary text-primary-foreground font-medium rounded-lg
+           transition-all duration-200 hover:brightness-110;
+    box-shadow: 0 2px 8px hsl(38 92% 55% / 0.3);
   }
 
-  /* Botões com estilo premium */
-  .barber-button-primary {
-    background: var(--gradient-primary);
-    color: hsl(var(--primary-foreground));
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    transition: var(--transition-smooth);
-    box-shadow: 0 4px 16px hsl(var(--primary) / 0.25);
+  .btn-primary:hover {
+    box-shadow: 0 4px 16px hsl(38 92% 55% / 0.4);
+    transform: translateY(-1px);
   }
 
-  .barber-button-primary:hover {
-    box-shadow: var(--shadow-glow-strong);
-    transform: translateY(-3px) scale(1.02);
+  .btn-primary:active {
+    transform: translateY(0);
   }
+
+  /* Inputs Refinados */
+  .input-refined {
+    @apply bg-input border border-border rounded-lg px-3 py-2
+           text-foreground placeholder:text-muted-foreground
+           focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary
+           transition-all duration-200;
+  }
+
+  /* Navegação Ativa */
+  .nav-item {
+    @apply flex items-center gap-3 px-3 py-2.5 rounded-lg
+           text-muted-foreground transition-all duration-150
+           hover:text-foreground hover:bg-secondary;
+  }
+
+  .nav-item.active {
+    @apply text-primary bg-primary/10;
+  }
+
+  /* Indicador de Status */
+  .status-dot {
+    @apply w-2 h-2 rounded-full;
+  }
+
+  .status-pending {
+    @apply bg-amber-500;
+  }
+
+  .status-confirmed {
+    @apply bg-emerald-500;
+  }
+
+  .status-cancelled {
+    @apply bg-red-500;
+  }
+
+  /* Scrollbar Personalizada */
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    @apply bg-border rounded-full;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    @apply bg-muted-foreground/30;
+  }
+}
+
+/* Animações Suaves */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateX(-8px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.3s ease-out forwards;
+}
+
+.animate-slideIn {
+  animation: slideIn 0.25s ease-out forwards;
 }
