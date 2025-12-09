@@ -5,7 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Calendar, Clock, User, Scissors, Phone, Pencil, Check, ChevronDown } from "lucide-react";
+import { Calendar, Clock, User, Scissors, Phone, Pencil, Check, ChevronDown, Plus } from "lucide-react";
 import { format, isSameDay, isBefore } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
@@ -71,6 +71,8 @@ export const AppointmentDialog = ({
   const [clientesSugestoes, setClientesSugestoes] = useState<ClienteSugestao[]>([]);
   const [showSugestoes, setShowSugestoes] = useState(false);
   const [servicoSelecionado, setServicoSelecionado] = useState<typeof SERVICOS[0] | null>(null);
+  const [servicoPersonalizado, setServicoPersonalizado] = useState("");
+  const [isServicoPersonalizado, setIsServicoPersonalizado] = useState(false);
   const [tempoServico, setTempoServico] = useState(30);
   const [dataSelecionada, setDataSelecionada] = useState<Date>(new Date());
   const [horarioSelecionado, setHorarioSelecionado] = useState<string | null>(null);
@@ -84,16 +86,19 @@ export const AppointmentDialog = ({
       setTelefoneCliente("");
       setTelefoneEditavel(true);
       setServicoSelecionado(null);
+      setServicoPersonalizado("");
+      setIsServicoPersonalizado(false);
+      setTempoServico(30);
       setHorarioSelecionado(null);
       setDataSelecionada(new Date());
     }
   }, [open]);
 
   useEffect(() => {
-    if (servicoSelecionado) {
+    if (servicoSelecionado && !isServicoPersonalizado) {
       setTempoServico(servicoSelecionado.tempo);
     }
-  }, [servicoSelecionado]);
+  }, [servicoSelecionado, isServicoPersonalizado]);
 
   useEffect(() => {
     const buscarClientes = async () => {
@@ -148,6 +153,17 @@ export const AppointmentDialog = ({
     setShowSugestoes(false);
   };
 
+  const handleSelectServico = (servico: typeof SERVICOS[0]) => {
+    setServicoSelecionado(servico);
+    setIsServicoPersonalizado(false);
+    setServicoPersonalizado("");
+  };
+
+  const handleSelectPersonalizado = () => {
+    setServicoSelecionado(null);
+    setIsServicoPersonalizado(true);
+  };
+
   const gerarHorariosDisponiveis = () => {
     const horarios: string[] = [];
     for (let hora = 8; hora < 20; hora++) {
@@ -184,8 +200,14 @@ export const AppointmentDialog = ({
     return isBefore(dataHorario, new Date());
   };
 
+  const getNomeServico = () => {
+    if (isServicoPersonalizado) return servicoPersonalizado;
+    return servicoSelecionado?.nome || "";
+  };
+
   const criarAgendamento = async () => {
-    if (!nomeCliente || !servicoSelecionado || !horarioSelecionado) {
+    const nomeServico = getNomeServico();
+    if (!nomeCliente || !nomeServico || !horarioSelecionado) {
       toast.error("Preencha todos os campos");
       return;
     }
@@ -210,7 +232,7 @@ export const AppointmentDialog = ({
         user_id: user.id,
         nome_cliente: nomeCliente,
         telefone_cliente: telefoneCliente.replace(/\D/g, '') || null,
-        servico: servicoSelecionado.nome,
+        servico: nomeServico,
         datetime_start: datetimeStart.toISOString(),
         datetime_end: datetimeEnd.toISOString(),
         dia_agendado: format(dataSelecionada, 'yyyy-MM-dd'),
@@ -237,8 +259,10 @@ export const AppointmentDialog = ({
   };
 
   const horarios = gerarHorariosDisponiveis();
-  const canProceedStep1 = nomeCliente.trim().length > 0 && servicoSelecionado;
+  
+  const canProceedStep1 = (servicoSelecionado || (isServicoPersonalizado && servicoPersonalizado.trim())) && tempoServico > 0;
   const canProceedStep2 = horarioSelecionado;
+  const canConfirm = nomeCliente.trim().length > 0;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -266,63 +290,9 @@ export const AppointmentDialog = ({
         </div>
 
         <div className="space-y-4 py-2">
-          {/* Step 1: Cliente e Serviço */}
+          {/* Step 1: Serviço e Tempo */}
           {step === 1 && (
             <div className="space-y-4 animate-fadeIn">
-              <div className="space-y-2 relative" ref={sugestoesRef}>
-                <Label className="text-foreground text-sm flex items-center gap-2">
-                  <User className="h-4 w-4 text-primary" />
-                  Nome do Cliente
-                </Label>
-                <Input
-                  value={nomeCliente}
-                  onChange={(e) => { setNomeCliente(e.target.value); setTelefoneEditavel(true); }}
-                  placeholder="Digite o nome"
-                  className="input-refined"
-                />
-                
-                {showSugestoes && (
-                  <div className="absolute z-50 w-full mt-1 bg-popover border border-border rounded-lg shadow-lg max-h-40 overflow-y-auto">
-                    {clientesSugestoes.map((cliente, i) => (
-                      <button
-                        key={i}
-                        onClick={() => selecionarCliente(cliente)}
-                        className="w-full px-3 py-2.5 text-left hover:bg-secondary transition-colors flex items-center justify-between"
-                      >
-                        <span className="text-foreground text-sm">{cliente.nome_cliente}</span>
-                        <span className="text-xs text-muted-foreground">Cliente existente</span>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <Label className="text-foreground text-sm flex items-center gap-2">
-                  <Phone className="h-4 w-4 text-primary" />
-                  WhatsApp
-                </Label>
-                <div className="flex gap-2">
-                  <Input
-                    value={telefoneCliente}
-                    onChange={(e) => setTelefoneCliente(formatarTelefone(e.target.value))}
-                    placeholder="(xx) x xxxx-xxxx"
-                    className="input-refined flex-1"
-                    disabled={!telefoneEditavel}
-                    maxLength={17}
-                  />
-                  {!telefoneEditavel && (
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={() => setTelefoneEditavel(true)}
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                  )}
-                </div>
-              </div>
-
               <div className="space-y-2">
                 <Label className="text-foreground text-sm flex items-center gap-2">
                   <Scissors className="h-4 w-4 text-primary" />
@@ -332,10 +302,10 @@ export const AppointmentDialog = ({
                   {SERVICOS.map((servico) => (
                     <button
                       key={servico.id}
-                      onClick={() => setServicoSelecionado(servico)}
+                      onClick={() => handleSelectServico(servico)}
                       className={cn(
                         "p-3 rounded-lg border text-left transition-all text-sm",
-                        servicoSelecionado?.id === servico.id
+                        servicoSelecionado?.id === servico.id && !isServicoPersonalizado
                           ? "border-primary bg-primary/10 text-foreground"
                           : "border-border bg-secondary/30 text-muted-foreground hover:border-border hover:bg-secondary/50"
                       )}
@@ -344,7 +314,54 @@ export const AppointmentDialog = ({
                       <span className="text-xs opacity-70">{servico.tempo} min</span>
                     </button>
                   ))}
+                  
+                  {/* Botão Personalizado */}
+                  <button
+                    onClick={handleSelectPersonalizado}
+                    className={cn(
+                      "p-3 rounded-lg border text-left transition-all text-sm col-span-2",
+                      isServicoPersonalizado
+                        ? "border-primary bg-primary/10 text-foreground"
+                        : "border-border bg-secondary/30 text-muted-foreground hover:border-border hover:bg-secondary/50"
+                    )}
+                  >
+                    <span className="font-medium flex items-center gap-2">
+                      <Plus className="h-4 w-4" />
+                      Personalizado
+                    </span>
+                    <span className="text-xs opacity-70">Digite o serviço e tempo</span>
+                  </button>
                 </div>
+              </div>
+
+              {/* Campos para serviço personalizado */}
+              {isServicoPersonalizado && (
+                <div className="space-y-3 animate-fadeIn">
+                  <div className="space-y-2">
+                    <Label className="text-foreground text-sm">Nome do Serviço</Label>
+                    <Input
+                      value={servicoPersonalizado}
+                      onChange={(e) => setServicoPersonalizado(e.target.value)}
+                      placeholder="Ex: Corte especial, Design de barba..."
+                      className="input-refined"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Campo de tempo */}
+              <div className="space-y-2">
+                <Label className="text-foreground text-sm flex items-center gap-2">
+                  <Clock className="h-4 w-4 text-primary" />
+                  Tempo do Procedimento (minutos)
+                </Label>
+                <Input
+                  type="number"
+                  value={tempoServico}
+                  onChange={(e) => setTempoServico(Math.max(1, parseInt(e.target.value) || 0))}
+                  min={1}
+                  className="input-refined"
+                />
               </div>
 
               <Button
@@ -360,6 +377,11 @@ export const AppointmentDialog = ({
           {/* Step 2: Data e Hora */}
           {step === 2 && (
             <div className="space-y-4 animate-fadeIn">
+              <div className="bg-secondary/30 rounded-lg p-3 mb-2">
+                <div className="text-sm text-muted-foreground">Serviço selecionado:</div>
+                <div className="text-foreground font-medium">{getNomeServico()} - {tempoServico} min</div>
+              </div>
+
               <div className="space-y-2">
                 <Label className="text-foreground text-sm">Data</Label>
                 <Popover>
@@ -373,9 +395,10 @@ export const AppointmentDialog = ({
                     <CalendarComponent
                       mode="single"
                       selected={dataSelecionada}
-                      onSelect={(date) => date && setDataSelecionada(date)}
+                      onSelect={(date) => { date && setDataSelecionada(date); setHorarioSelecionado(null); }}
                       disabled={(date) => isBefore(date, new Date(new Date().setHours(0,0,0,0)))}
                       locale={ptBR}
+                      className="pointer-events-auto"
                     />
                   </PopoverContent>
                 </Popover>
@@ -384,7 +407,7 @@ export const AppointmentDialog = ({
               <div className="space-y-2">
                 <Label className="text-foreground text-sm flex items-center gap-2">
                   <Clock className="h-4 w-4 text-primary" />
-                  Horário
+                  Horário Disponível
                 </Label>
                 <div className="grid grid-cols-4 gap-2 max-h-48 overflow-y-auto custom-scrollbar p-1">
                   {horarios.map((horario) => {
@@ -428,25 +451,77 @@ export const AppointmentDialog = ({
             </div>
           )}
 
-          {/* Step 3: Confirmação */}
+          {/* Step 3: Cliente e Confirmação */}
           {step === 3 && (
             <div className="space-y-4 animate-fadeIn">
+              <div className="bg-secondary/30 rounded-lg p-3 mb-2">
+                <div className="text-sm text-muted-foreground">Agendamento:</div>
+                <div className="text-foreground font-medium">
+                  {getNomeServico()} - {format(dataSelecionada, "dd/MM")} às {horarioSelecionado}
+                </div>
+              </div>
+
+              <div className="space-y-2 relative" ref={sugestoesRef}>
+                <Label className="text-foreground text-sm flex items-center gap-2">
+                  <User className="h-4 w-4 text-primary" />
+                  Nome do Cliente
+                </Label>
+                <Input
+                  value={nomeCliente}
+                  onChange={(e) => { setNomeCliente(e.target.value); setTelefoneEditavel(true); }}
+                  placeholder="Digite o nome"
+                  className="input-refined"
+                />
+                
+                {showSugestoes && (
+                  <div className="absolute z-50 w-full mt-1 bg-popover border border-border rounded-lg shadow-lg max-h-40 overflow-y-auto">
+                    {clientesSugestoes.map((cliente, i) => (
+                      <button
+                        key={i}
+                        onClick={() => selecionarCliente(cliente)}
+                        className="w-full px-3 py-2.5 text-left hover:bg-secondary transition-colors flex items-center justify-between"
+                      >
+                        <span className="text-foreground text-sm">{cliente.nome_cliente}</span>
+                        <span className="text-xs text-muted-foreground">Cliente existente</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-foreground text-sm flex items-center gap-2">
+                  <Phone className="h-4 w-4 text-primary" />
+                  WhatsApp (opcional)
+                </Label>
+                <div className="flex gap-2">
+                  <Input
+                    value={telefoneCliente}
+                    onChange={(e) => setTelefoneCliente(formatarTelefone(e.target.value))}
+                    placeholder="(xx) x xxxx-xxxx"
+                    className="input-refined flex-1"
+                    disabled={!telefoneEditavel}
+                    maxLength={17}
+                  />
+                  {!telefoneEditavel && (
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => setTelefoneEditavel(true)}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+              </div>
+
+              {/* Resumo */}
               <div className="bg-secondary/30 rounded-lg p-4 space-y-3">
                 <h4 className="font-medium text-foreground">Resumo do Agendamento</h4>
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Cliente:</span>
-                    <span className="text-foreground font-medium">{nomeCliente}</span>
-                  </div>
-                  {telefoneCliente && (
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">WhatsApp:</span>
-                      <span className="text-foreground">{telefoneCliente}</span>
-                    </div>
-                  )}
-                  <div className="flex justify-between">
                     <span className="text-muted-foreground">Serviço:</span>
-                    <span className="text-foreground">{servicoSelecionado?.nome}</span>
+                    <span className="text-foreground">{getNomeServico()}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Data:</span>
@@ -460,6 +535,18 @@ export const AppointmentDialog = ({
                     <span className="text-muted-foreground">Duração:</span>
                     <span className="text-foreground">{tempoServico} minutos</span>
                   </div>
+                  {nomeCliente && (
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Cliente:</span>
+                      <span className="text-foreground font-medium">{nomeCliente}</span>
+                    </div>
+                  )}
+                  {telefoneCliente && (
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">WhatsApp:</span>
+                      <span className="text-foreground">{telefoneCliente}</span>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -469,10 +556,10 @@ export const AppointmentDialog = ({
                 </Button>
                 <Button
                   onClick={criarAgendamento}
-                  disabled={isLoading}
+                  disabled={isLoading || !canConfirm}
                   className="flex-1 btn-primary"
                 >
-                  {isLoading ? "Salvando..." : "Confirmar"}
+                  {isLoading ? "Salvando..." : "Confirmar Agendamento"}
                 </Button>
               </div>
             </div>
