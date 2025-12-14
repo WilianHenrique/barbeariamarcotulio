@@ -60,6 +60,7 @@ interface AppointmentListProps {
   agendamentos: Agendamento[];
   isLoading: boolean;
   onDelete: (id: string, nome: string) => void;
+  onSelect?: (agendamento: Agendamento) => void;
   emptyMessage?: string;
 }
 
@@ -74,6 +75,7 @@ export const AppointmentList = ({
   agendamentos, 
   isLoading, 
   onDelete,
+  onSelect,
   emptyMessage = "Nenhum agendamento encontrado"
 }: AppointmentListProps) => {
   const [now, setNow] = useState(Date.now());
@@ -140,8 +142,10 @@ export const AppointmentList = ({
               return (
                 <div 
                   key={ag.id} 
+                  onClick={() => onSelect?.(ag)}
                   className={cn(
-                    "elegant-card p-4 flex items-center gap-4 group",
+                    "elegant-card p-4 flex items-center gap-4 group cursor-pointer",
+                    "hover:ring-2 hover:ring-primary/30 transition-all",
                     isPast && "opacity-60"
                   )}
                 >
