@@ -6,6 +6,7 @@ import { Sidebar } from "@/components/layout/Sidebar";
 import { QuickStats } from "@/components/dashboard/QuickStats";
 import { WeeklyCalendar } from "@/components/dashboard/WeeklyCalendar";
 import { AppointmentDialog } from "@/components/dashboard/AppointmentDialog";
+import { EditAppointmentDialog } from "@/components/dashboard/EditAppointmentDialog";
 import { AppointmentList } from "@/components/dashboard/AppointmentList";
 import { MensagensAgendadas } from "@/components/dashboard/MensagensAgendadas";
 import { RelatorioGeral } from "@/components/dashboard/RelatorioGeral";
@@ -37,6 +38,8 @@ const Dashboard = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("agenda");
   const [showNovoAgendamento, setShowNovoAgendamento] = useState(false);
+  const [agendamentoSelecionado, setAgendamentoSelecionado] = useState<Agendamento | null>(null);
+  const [showEditDialog, setShowEditDialog] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   
   useEffect(() => {
@@ -89,6 +92,22 @@ const Dashboard = () => {
     } catch (error) {
       toast.error("Erro ao excluir agendamento");
     }
+  };
+
+  const handleDeleteDirect = async (id: string, nomeCliente: string) => {
+    try {
+      const { error } = await supabase.from('agendamentos').delete().eq('id', id);
+      if (error) throw error;
+      setAgendamentos((prev) => prev.filter((a) => a.id !== id));
+      toast.success("Agendamento excluído");
+    } catch (error) {
+      toast.error("Erro ao excluir agendamento");
+    }
+  };
+
+  const handleSelectAgendamento = (agendamento: Agendamento) => {
+    setAgendamentoSelecionado(agendamento);
+    setShowEditDialog(true);
   };
 
   // Filtros
@@ -158,6 +177,7 @@ const Dashboard = () => {
               <WeeklyCalendar
                 agendamentos={agendamentos}
                 onNovoAgendamento={() => setShowNovoAgendamento(true)}
+                onSelecionarAgendamento={handleSelectAgendamento}
               />
             </div>
           )}
@@ -180,6 +200,7 @@ const Dashboard = () => {
                   agendamentos={agendamentosPendentes}
                   isLoading={isLoading}
                   onDelete={handleDelete}
+                  onSelect={handleSelectAgendamento}
                   emptyMessage="Nenhum agendamento pendente"
                 />
               </div>
@@ -196,11 +217,20 @@ const Dashboard = () => {
         </div>
       </main>
 
-      {/* Dialog */}
+      {/* Dialogs */}
       <AppointmentDialog
         open={showNovoAgendamento}
         onOpenChange={setShowNovoAgendamento}
         onSuccess={loadAgendamentos}
+        agendamentosExistentes={agendamentos}
+      />
+
+      <EditAppointmentDialog
+        open={showEditDialog}
+        onOpenChange={setShowEditDialog}
+        agendamento={agendamentoSelecionado}
+        onSuccess={loadAgendamentos}
+        onDelete={handleDeleteDirect}
         agendamentosExistentes={agendamentos}
       />
     </div>
