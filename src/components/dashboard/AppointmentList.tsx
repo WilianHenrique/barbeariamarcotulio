@@ -1,9 +1,46 @@
+import { useState, useEffect } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Trash2, Phone, Clock, Scissors } from "lucide-react";
+import { Trash2, Phone, Clock, Scissors, Bell } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+
+// Calcular tempo restante formatado
+const getTempoRestante = (datetime: string, now: number): { texto: string; tipo: '24h' | '1h' | 'passado' | 'futuro' } => {
+  const dataEvento = new Date(datetime).getTime();
+  const diff = dataEvento - now;
+  
+  if (diff <= 0) {
+    return { texto: "Já passou", tipo: 'passado' };
+  }
+
+  const horas = Math.floor(diff / (1000 * 60 * 60));
+  const minutos = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+  const segundos = Math.floor((diff % (1000 * 60)) / 1000);
+
+  let tipo: '24h' | '1h' | 'passado' | 'futuro' = 'futuro';
+  
+  // Dentro da janela de 1h (próxima hora)
+  if (horas < 1) {
+    tipo = '1h';
+  }
+  // Dentro da janela de 24h
+  else if (horas < 24) {
+    tipo = '24h';
+  }
+
+  if (horas > 48) {
+    const dias = Math.floor(horas / 24);
+    return { texto: `${dias}d ${horas % 24}h`, tipo };
+  }
+  
+  if (horas > 0) {
+    return { texto: `${horas}h ${minutos.toString().padStart(2, '0')}m ${segundos.toString().padStart(2, '0')}s`, tipo };
+  }
+  
+  return { texto: `${minutos}m ${segundos.toString().padStart(2, '0')}s`, tipo };
+};
 
 interface Agendamento {
   id: string;
@@ -39,6 +76,16 @@ export const AppointmentList = ({
   onDelete,
   emptyMessage = "Nenhum agendamento encontrado"
 }: AppointmentListProps) => {
+  const [now, setNow] = useState(Date.now());
+
+  // Atualizar contador a cada segundo
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setNow(Date.now());
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
   if (isLoading) {
     return (
       <div className="space-y-3">
@@ -84,11 +131,11 @@ export const AppointmentList = ({
           
           <div className="space-y-2">
             {items.map((ag) => {
-              const agora = new Date();
               const dataEvento = new Date(ag.datetime_start);
-              const isPast = dataEvento < agora;
-              const horasRestantes = (dataEvento.getTime() - agora.getTime()) / (1000 * 60 * 60);
-              const isUrgent = horasRestantes > 0 && horasRestantes <= 2;
+              const isPast = dataEvento.getTime() < now;
+              const tempoRestante = getTempoRestante(ag.datetime_start, now);
+              const isUrgent = tempoRestante.tipo === '1h';
+              const isProximo = tempoRestante.tipo === '24h';
 
               return (
                 <div 
@@ -101,11 +148,11 @@ export const AppointmentList = ({
                   {/* Time Block */}
                   <div className={cn(
                     "w-16 h-16 rounded-lg flex flex-col items-center justify-center shrink-0",
-                    isUrgent ? "bg-amber-500/10" : "bg-primary/10"
+                    isUrgent ? "bg-accent/10" : isProximo ? "bg-amber-500/10" : "bg-primary/10"
                   )}>
                     <span className={cn(
                       "text-lg font-semibold",
-                      isUrgent ? "text-amber-500" : "text-primary"
+                      isUrgent ? "text-accent" : isProximo ? "text-amber-500" : "text-primary"
                     )}>
                       {ag.hora_agendada}
                     </span>
@@ -132,6 +179,30 @@ export const AppointmentList = ({
                       )}
                     </div>
                   </div>
+
+                  {/* Countdown Timer */}
+                  {!isPast && (
+                    <div className={cn(
+                      "hidden md:flex flex-col items-center px-3 py-2 rounded-lg min-w-[100px]",
+                      isUrgent ? "bg-accent/10" : isProximo ? "bg-amber-500/10" : "bg-secondary/50"
+                    )}>
+                      <div className="flex items-center gap-1 mb-0.5">
+                        <Bell className={cn(
+                          "w-3 h-3",
+                          isUrgent ? "text-accent" : isProximo ? "text-amber-500" : "text-muted-foreground"
+                        )} />
+                        <span className="text-[10px] text-muted-foreground uppercase">
+                          {isUrgent ? "Em breve" : isProximo ? "Próximo" : "Faltam"}
+                        </span>
+                      </div>
+                      <span className={cn(
+                        "font-mono text-sm font-semibold",
+                        isUrgent ? "text-accent" : isProximo ? "text-amber-500" : "text-foreground"
+                      )}>
+                        {tempoRestante.texto}
+                      </span>
+                    </div>
+                  )}
 
                   {/* Status Badge */}
                   <div className="hidden sm:block">
