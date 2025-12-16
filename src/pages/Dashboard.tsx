@@ -176,7 +176,7 @@ const Dashboard = () => {
 
           {/* Content based on active tab */}
           {activeTab === "agenda" && (
-            <div className="h-[calc(100vh-320px)] min-h-[500px]">
+            <div className="h-[calc(100vh-260px)] min-h-[400px]">
               <WeeklyCalendar
                 agendamentos={agendamentos}
                 onNovoAgendamento={() => setShowNovoAgendamento(true)}
