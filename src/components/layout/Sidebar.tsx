@@ -8,7 +8,8 @@ import {
   LogOut,
   Scissors,
   Menu,
-  X
+  X,
+  Users
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -25,6 +26,7 @@ const navItems = [
   { id: "agenda", label: "Agenda", icon: Calendar },
   { id: "pendentes", label: "Pendentes", icon: Clock },
   { id: "mensagens", label: "Mensagens", icon: MessageSquare },
+  { id: "clientes", label: "Clientes", icon: Users },
   { id: "relatorios", label: "Relatórios", icon: BarChart3 },
 ];
 
