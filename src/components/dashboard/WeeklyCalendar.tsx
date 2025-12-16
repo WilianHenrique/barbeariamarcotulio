@@ -147,16 +147,16 @@ export const WeeklyCalendar = ({
       </div>
       
       {/* Calendar Grid */}
-      <div className="flex-1 overflow-auto custom-scrollbar">
-        <div className="min-w-[700px]">
+      <div className="flex-1 flex flex-col min-h-0">
+        <div className="min-w-[700px] flex flex-col h-full">
           {/* Days Header */}
-          <div className="grid grid-cols-[50px_repeat(7,1fr)] border-b border-border/50 sticky top-0 bg-card z-10">
+          <div className="grid grid-cols-[50px_repeat(7,1fr)] border-b border-border/50 bg-card shrink-0">
             <div className="p-2" />
             {diasSemana.map((dia) => (
               <div 
                 key={dia.toISOString()} 
                 className={cn(
-                  "p-3 text-center border-l border-border/30",
+                  "p-2 text-center border-l border-border/30",
                   isToday(dia) && "bg-primary/5"
                 )}
               >
@@ -164,7 +164,7 @@ export const WeeklyCalendar = ({
                   {format(dia, 'EEE', { locale: ptBR })}
                 </span>
                 <span className={cn(
-                  "text-lg font-semibold block mt-0.5",
+                  "text-base font-semibold block",
                   isToday(dia) 
                     ? "text-primary" 
                     : "text-foreground"
@@ -175,16 +175,16 @@ export const WeeklyCalendar = ({
             ))}
           </div>
 
-          {/* Time Grid */}
-          <div className="grid grid-cols-[50px_repeat(7,1fr)]">
+          {/* Time Grid - uses flex to fill available space */}
+          <div className="grid grid-cols-[50px_repeat(7,1fr)] flex-1 min-h-0">
             {/* Hours Column */}
-            <div>
+            <div className="flex flex-col">
               {HORARIOS.map((hora) => (
                 <div 
                   key={hora} 
-                  className="h-14 flex items-start justify-end pr-2 pt-0"
+                  className="flex-1 flex items-start justify-end pr-2 min-h-[28px]"
                 >
-                  <span className="text-[10px] text-muted-foreground -mt-2">
+                  <span className="text-[10px] text-muted-foreground -mt-1">
                     {hora.toString().padStart(2, '0')}:00
                   </span>
                 </div>
@@ -208,7 +208,7 @@ export const WeeklyCalendar = ({
                 <div 
                   key={dia.toISOString()} 
                   className={cn(
-                    "relative border-l border-border/30",
+                    "relative border-l border-border/30 flex flex-col",
                     isPast && "bg-muted/5",
                     isToday(dia) && "bg-primary/5"
                   )}
@@ -217,7 +217,7 @@ export const WeeklyCalendar = ({
                   {HORARIOS.map((hora) => (
                     <div 
                       key={hora} 
-                      className="h-14 border-b border-border/20 hover:bg-secondary/30 transition-colors"
+                      className="flex-1 border-b border-border/20 hover:bg-secondary/30 transition-colors min-h-[28px]"
                     />
                   ))}
                   
@@ -243,17 +243,17 @@ export const WeeklyCalendar = ({
                           key={ag.id}
                           onClick={() => onSelecionarAgendamento?.(ag)}
                           className={cn(
-                            "absolute left-0.5 right-0.5 rounded-md px-1.5 py-1 overflow-hidden",
+                            "absolute left-0.5 right-0.5 rounded-md px-1 py-0.5 overflow-hidden",
                             "cursor-pointer pointer-events-auto transition-all",
                             "hover:ring-2 hover:ring-primary/50",
                             cores.bg, cores.border, "border-l-[3px]"
                           )}
-                          style={{ top: pos.top, height: pos.height, minHeight: '28px' }}
+                          style={{ top: pos.top, height: pos.height, minHeight: '24px' }}
                         >
-                          <div className={cn("text-[10px] font-medium truncate", cores.text)}>
+                          <div className={cn("text-[9px] font-medium truncate", cores.text)}>
                             {ag.hora_agendada}
                           </div>
-                          <div className="text-xs font-semibold text-foreground truncate">
+                          <div className="text-[10px] font-semibold text-foreground truncate">
                             {ag.nome_cliente}
                           </div>
                         </div>
