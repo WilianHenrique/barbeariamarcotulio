@@ -46,12 +46,12 @@ export const RelatorioGeral = ({ agendamentos }: RelatorioGeralProps) => {
   const dadosServicos = servicosMaisSolicitados();
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      <Card className="barber-card border-primary/20">
-        <CardHeader className="border-b border-primary/10">
-          <CardTitle className="text-lg font-display text-primary">Agendamentos por Mês</CardTitle>
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
+      <Card className="barber-card border-primary/20 overflow-hidden">
+        <CardHeader className="border-b border-primary/10 p-3 md:p-6">
+          <CardTitle className="text-sm md:text-lg font-display text-primary">Agendamentos por Mês</CardTitle>
         </CardHeader>
-        <CardContent className="pt-6">
+        <CardContent className="p-2 md:pt-6 md:p-6">
           <ChartContainer
             config={{
               total: {
@@ -59,25 +59,27 @@ export const RelatorioGeral = ({ agendamentos }: RelatorioGeralProps) => {
                 color: "hsl(var(--primary))",
               },
             }}
-            className="h-[300px]"
+            className="h-[200px] md:h-[300px] w-full"
           >
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={dadosMensais}>
+              <BarChart data={dadosMensais} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                 <XAxis 
                   dataKey="mes" 
                   stroke="hsl(var(--muted-foreground))"
-                  fontSize={12}
+                  fontSize={10}
+                  tickMargin={5}
                 />
                 <YAxis 
                   stroke="hsl(var(--muted-foreground))"
-                  fontSize={12}
+                  fontSize={10}
+                  width={30}
                 />
                 <ChartTooltip content={<ChartTooltipContent />} />
                 <Bar 
                   dataKey="total" 
                   fill="hsl(var(--primary))" 
-                  radius={[8, 8, 0, 0]}
+                  radius={[4, 4, 0, 0]}
                 />
               </BarChart>
             </ResponsiveContainer>
@@ -85,11 +87,11 @@ export const RelatorioGeral = ({ agendamentos }: RelatorioGeralProps) => {
         </CardContent>
       </Card>
 
-      <Card className="barber-card border-primary/20">
-        <CardHeader className="border-b border-primary/10">
-          <CardTitle className="text-lg font-display text-primary">Serviços Mais Solicitados</CardTitle>
+      <Card className="barber-card border-primary/20 overflow-hidden">
+        <CardHeader className="border-b border-primary/10 p-3 md:p-6">
+          <CardTitle className="text-sm md:text-lg font-display text-primary">Serviços Mais Solicitados</CardTitle>
         </CardHeader>
-        <CardContent className="pt-6">
+        <CardContent className="p-2 md:pt-6 md:p-6">
           <ChartContainer
             config={{
               total: {
@@ -97,28 +99,29 @@ export const RelatorioGeral = ({ agendamentos }: RelatorioGeralProps) => {
                 color: "hsl(var(--accent))",
               },
             }}
-            className="h-[300px]"
+            className="h-[200px] md:h-[300px] w-full"
           >
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={dadosServicos} layout="vertical">
+              <BarChart data={dadosServicos} layout="vertical" margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                 <XAxis 
                   type="number" 
                   stroke="hsl(var(--muted-foreground))"
-                  fontSize={12}
+                  fontSize={10}
                 />
                 <YAxis 
                   dataKey="servico" 
                   type="category" 
                   stroke="hsl(var(--muted-foreground))"
-                  fontSize={12}
-                  width={120}
+                  fontSize={9}
+                  width={70}
+                  tickFormatter={(value) => value.length > 10 ? value.substring(0, 10) + '...' : value}
                 />
                 <ChartTooltip content={<ChartTooltipContent />} />
                 <Bar 
                   dataKey="total" 
                   fill="hsl(var(--accent))" 
-                  radius={[0, 8, 8, 0]}
+                  radius={[0, 4, 4, 0]}
                 />
               </BarChart>
             </ResponsiveContainer>
