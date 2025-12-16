@@ -10,6 +10,7 @@ import { EditAppointmentDialog } from "@/components/dashboard/EditAppointmentDia
 import { AppointmentList } from "@/components/dashboard/AppointmentList";
 import { MensagensAgendadas } from "@/components/dashboard/MensagensAgendadas";
 import { RelatorioGeral } from "@/components/dashboard/RelatorioGeral";
+import { ClientesList } from "@/components/dashboard/ClientesList";
 import { Input } from "@/components/ui/input";
 import { Search, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -145,12 +146,14 @@ const Dashboard = () => {
                 {activeTab === "agenda" && "Agenda"}
                 {activeTab === "pendentes" && "Agendamentos Pendentes"}
                 {activeTab === "mensagens" && "Mensagens"}
+                {activeTab === "clientes" && "Clientes"}
                 {activeTab === "relatorios" && "Relatórios"}
               </h1>
               <p className="text-muted-foreground text-sm mt-1">
                 {activeTab === "agenda" && "Visualize e gerencie seus agendamentos"}
                 {activeTab === "pendentes" && "Agendamentos que aguardam confirmação"}
                 {activeTab === "mensagens" && "Configure suas mensagens de notificação"}
+                {activeTab === "clientes" && "Gerencie sua lista de clientes"}
                 {activeTab === "relatorios" && "Acompanhe o desempenho da barbearia"}
               </p>
             </div>
@@ -209,6 +212,13 @@ const Dashboard = () => {
 
           {activeTab === "mensagens" && (
             <MensagensAgendadas />
+          )}
+
+          {activeTab === "clientes" && (
+            <ClientesList 
+              agendamentos={agendamentos} 
+              onRefresh={loadAgendamentos}
+            />
           )}
 
           {activeTab === "relatorios" && (
