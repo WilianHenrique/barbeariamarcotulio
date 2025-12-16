@@ -4,6 +4,7 @@ import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import { format, addWeeks, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay, isToday, isBefore, startOfDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface Agendamento {
   id: string;
@@ -239,24 +240,32 @@ export const WeeklyCalendar = ({
                       const cores = getCorServico(ag.servico);
                       
                       return (
-                        <div
-                          key={ag.id}
-                          onClick={() => onSelecionarAgendamento?.(ag)}
-                          className={cn(
-                            "absolute left-0.5 right-0.5 rounded-md px-1 py-0.5 overflow-hidden",
-                            "cursor-pointer pointer-events-auto transition-all",
-                            "hover:ring-2 hover:ring-primary/50",
-                            cores.bg, cores.border, "border-l-[3px]"
-                          )}
-                          style={{ top: pos.top, height: pos.height, minHeight: '24px' }}
-                        >
-                          <div className={cn("text-[9px] font-medium truncate", cores.text)}>
-                            {ag.hora_agendada}
-                          </div>
-                          <div className="text-[10px] font-semibold text-foreground truncate">
-                            {ag.nome_cliente}
-                          </div>
-                        </div>
+                        <Tooltip key={ag.id}>
+                          <TooltipTrigger asChild>
+                            <div
+                              onClick={() => onSelecionarAgendamento?.(ag)}
+                              className={cn(
+                                "absolute left-0.5 right-0.5 rounded-md px-1 py-0.5 overflow-hidden",
+                                "cursor-pointer pointer-events-auto transition-all",
+                                "hover:ring-2 hover:ring-primary/50 hover:z-30",
+                                cores.bg, cores.border, "border-l-[3px]"
+                              )}
+                              style={{ top: pos.top, height: pos.height, minHeight: '24px' }}
+                            >
+                              <div className={cn("text-[9px] font-medium truncate", cores.text)}>
+                                {ag.hora_agendada}
+                              </div>
+                              <div className="text-[10px] font-semibold text-foreground truncate">
+                                {ag.nome_cliente}
+                              </div>
+                            </div>
+                          </TooltipTrigger>
+                          <TooltipContent side="top" className="max-w-[200px]">
+                            <div className="text-sm font-semibold">{ag.nome_cliente}</div>
+                            <div className="text-xs text-muted-foreground">{ag.servico}</div>
+                            <div className="text-xs">{ag.hora_agendada} - {ag.hora_final}</div>
+                          </TooltipContent>
+                        </Tooltip>
                       );
                     })}
                   </div>
