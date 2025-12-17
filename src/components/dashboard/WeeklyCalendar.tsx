@@ -128,6 +128,8 @@ export const WeeklyCalendar = ({
     return agendamentos.filter(ag => isSameDay(new Date(ag.datetime_start), dia));
   };
 
+  const SLOT_HEIGHT = 50; // altura fixa de cada slot em pixels
+
   // Calcula posição baseado nos slots dinâmicos
   const calcularPosicaoAgendamento = (agendamento: Agendamento) => {
     const inicio = new Date(agendamento.datetime_start);
@@ -162,15 +164,16 @@ export const WeeklyCalendar = ({
     
     const offsetDentroSlot = (agMinutos - slotAtualMinutos) / duracaoSlot;
     
-    const topPercent = ((slotIndex + offsetDentroSlot) / slotsHorarios.length) * 100;
+    const topPx = (slotIndex + offsetDentroSlot) * SLOT_HEIGHT;
     
-    // Calcula altura baseada na duração
-    const duracaoTotalSlots = agendamento.tempo_total_minutos / (12 * 60 / slotsHorarios.length * slotsHorarios.length / 13);
-    const heightPercent = (agendamento.tempo_total_minutos / (12 * 60)) * 100 * (slotsHorarios.length / 13);
+    // Calcula altura baseada na duração em minutos
+    // Proporção: SLOT_HEIGHT pixels por duracaoSlot minutos
+    const alturaMinuto = SLOT_HEIGHT / 60; // pixels por minuto (assumindo slot padrão de 1h)
+    const heightPx = Math.max(agendamento.tempo_total_minutos * alturaMinuto, 40);
     
     return { 
-      top: `${Math.max(0, topPercent)}%`, 
-      height: `${Math.max(heightPercent, 100 / slotsHorarios.length)}%`
+      top: `${topPx}px`, 
+      height: `${heightPx}px`
     };
   };
 
@@ -189,9 +192,9 @@ export const WeeklyCalendar = ({
   }, [currentDate]);
 
   return (
-    <div className="elegant-card overflow-hidden flex flex-col h-full">
+    <div className="elegant-card overflow-hidden">
       {/* Header */}
-      <div className="p-4 border-b border-border/50 flex items-center justify-between flex-wrap gap-3">
+      <div className="p-4 border-b border-border/50 flex items-center justify-between flex-wrap gap-3 sticky top-0 bg-card z-10">
         <div className="flex items-center gap-3">
           <Button 
             variant="ghost" 
@@ -233,10 +236,10 @@ export const WeeklyCalendar = ({
       </div>
       
       {/* Calendar Grid */}
-      <div className="flex-1 flex flex-col min-h-0">
-        <div className="min-w-[700px] flex flex-col h-full">
+      <div className="overflow-x-auto">
+        <div className="min-w-[700px]">
           {/* Days Header */}
-          <div className="grid grid-cols-[50px_repeat(7,1fr)] border-b border-border/50 bg-card shrink-0">
+          <div className="grid grid-cols-[50px_repeat(7,1fr)] border-b border-border/50 bg-card">
             <div className="p-2" />
             {diasSemana.map((dia) => (
               <div 
@@ -261,14 +264,14 @@ export const WeeklyCalendar = ({
             ))}
           </div>
 
-          {/* Time Grid - uses flex to fill available space */}
-          <div className="grid grid-cols-[50px_repeat(7,1fr)] flex-1 min-h-0 overflow-y-auto">
+          {/* Time Grid */}
+          <div className="grid grid-cols-[50px_repeat(7,1fr)]">
             {/* Hours Column */}
             <div className="flex flex-col">
               {slotsHorarios.map((slot, index) => (
                 <div 
                   key={`${slot.hora}-${slot.minuto}`} 
-                  className="flex-1 flex items-start justify-end pr-2 min-h-[40px]"
+                  className="h-[50px] flex items-start justify-end pr-2"
                 >
                   <span className="text-[10px] text-muted-foreground -mt-1">
                     {slot.label}
@@ -287,8 +290,8 @@ export const WeeklyCalendar = ({
               const currentMinute = currentTime.getMinutes();
               const isWithinSchedule = currentHour >= 8 && currentHour < 20;
               
-              // Calcula posição da linha do tempo atual baseado nos slots
-              let timeLinePosition = -1;
+              // Calcula posição da linha do tempo atual baseado nos slots (em pixels)
+              let timeLinePositionPx = -1;
               if (isWithinSchedule) {
                 const currentMinutos = currentHour * 60 + currentMinute;
                 for (let i = 0; i < slotsHorarios.length; i++) {
@@ -301,7 +304,7 @@ export const WeeklyCalendar = ({
                   
                   if (currentMinutos >= slotMinutos && currentMinutos < proximoMinutos) {
                     const offset = (currentMinutos - slotMinutos) / (proximoMinutos - slotMinutos);
-                    timeLinePosition = ((i + offset) / slotsHorarios.length) * 100;
+                    timeLinePositionPx = (i + offset) * SLOT_HEIGHT;
                     break;
                   }
                 }
@@ -320,15 +323,15 @@ export const WeeklyCalendar = ({
                   {slotsHorarios.map((slot) => (
                     <div 
                       key={`${slot.hora}-${slot.minuto}`} 
-                      className="flex-1 border-b border-border/20 hover:bg-secondary/30 transition-colors min-h-[40px]"
+                      className="h-[50px] border-b border-border/20 hover:bg-secondary/30 transition-colors"
                     />
                   ))}
                   
                   {/* Current time line */}
-                  {showCurrentTimeLine && timeLinePosition >= 0 && (
+                  {showCurrentTimeLine && timeLinePositionPx >= 0 && (
                     <div 
                       className="absolute left-0 right-0 z-20 pointer-events-none flex items-center"
-                      style={{ top: `${timeLinePosition}%` }}
+                      style={{ top: `${timeLinePositionPx}px` }}
                     >
                       <div className="w-2 h-2 bg-accent rounded-full -ml-1" />
                       <div className="flex-1 h-[2px] bg-accent" />
