@@ -37,14 +37,53 @@ const CORES_SERVICOS: Record<string, { bg: string; text: string; border: string 
 
 const DEFAULT_COR = { bg: "bg-primary/20", text: "text-primary", border: "border-l-primary" };
 
-const HORARIOS = Array.from({ length: 13 }, (_, i) => 8 + i);
-
 const getBrasiliaTime = () => {
   const now = new Date();
   const brasiliaOffset = -3 * 60;
   const localOffset = now.getTimezoneOffset();
   const diff = brasiliaOffset - (-localOffset);
   return new Date(now.getTime() + diff * 60 * 1000);
+};
+
+// Gera slots de tempo dinâmicos baseado nos agendamentos
+const gerarSlotsTempoSemanais = (agendamentos: Agendamento[]) => {
+  // Coleta todos os horários de início dos agendamentos
+  const horariosUsados = new Set<string>();
+  
+  agendamentos.forEach(ag => {
+    const inicio = new Date(ag.datetime_start);
+    const hora = inicio.getHours();
+    const minuto = inicio.getMinutes();
+    
+    // Adiciona o horário exato do agendamento
+    if (hora >= 8 && hora < 20) {
+      horariosUsados.add(`${hora}:${minuto}`);
+    }
+  });
+
+  // Gera os slots base (de hora em hora, das 8h às 20h)
+  const slots: { hora: number; minuto: number; label: string }[] = [];
+  
+  for (let h = 8; h <= 20; h++) {
+    slots.push({ hora: h, minuto: 0, label: `${h.toString().padStart(2, '0')}:00` });
+    
+    // Se há agendamentos em :30 desta hora, adiciona o slot de 30 min
+    if (horariosUsados.has(`${h}:30`)) {
+      slots.push({ hora: h, minuto: 30, label: `${h.toString().padStart(2, '0')}:30` });
+    }
+    
+    // Se há agendamentos em outros minutos, adiciona slots específicos
+    [15, 45].forEach(min => {
+      if (horariosUsados.has(`${h}:${min}`)) {
+        slots.push({ hora: h, minuto: min, label: `${h.toString().padStart(2, '0')}:${min.toString().padStart(2, '0')}` });
+      }
+    });
+  }
+
+  // Ordena por horário
+  slots.sort((a, b) => (a.hora * 60 + a.minuto) - (b.hora * 60 + b.minuto));
+  
+  return slots;
 };
 
 export const WeeklyCalendar = ({ 
@@ -76,83 +115,62 @@ export const WeeklyCalendar = ({
     return eachDayOfInterval({ start: inicio, end: fim });
   }, [currentDate]);
 
+  // Gera slots dinâmicos baseado nos agendamentos da semana
+  const slotsHorarios = useMemo(() => {
+    const agendamentosSemana = agendamentos.filter(ag => {
+      const dataAg = new Date(ag.datetime_start);
+      return diasSemana.some(dia => isSameDay(dataAg, dia));
+    });
+    return gerarSlotsTempoSemanais(agendamentosSemana);
+  }, [agendamentos, diasSemana]);
+
   const getAgendamentosDia = (dia: Date) => {
     return agendamentos.filter(ag => isSameDay(new Date(ag.datetime_start), dia));
   };
 
-  // Detecta sobreposições e calcula colunas para cada agendamento
-  const calcularLayoutAgendamentos = (agendamentosDia: Agendamento[]) => {
-    if (agendamentosDia.length === 0) return [];
-
-    // Ordena por hora de início
-    const sorted = [...agendamentosDia].sort((a, b) => 
-      new Date(a.datetime_start).getTime() - new Date(b.datetime_start).getTime()
-    );
-
-    const layouts: { agendamento: Agendamento; column: number; totalColumns: number }[] = [];
-    const columns: { end: Date }[] = [];
-
-    for (const ag of sorted) {
-      const start = new Date(ag.datetime_start);
-      const end = new Date(ag.datetime_end);
-
-      // Encontra a primeira coluna disponível (onde o último agendamento já terminou)
-      let columnIndex = columns.findIndex(col => col.end <= start);
-      
-      if (columnIndex === -1) {
-        // Nenhuma coluna disponível, cria uma nova
-        columnIndex = columns.length;
-        columns.push({ end });
-      } else {
-        // Atualiza o fim da coluna
-        columns[columnIndex].end = end;
-      }
-
-      layouts.push({ agendamento: ag, column: columnIndex, totalColumns: 0 });
-    }
-
-    // Calcula o número total de colunas para cada grupo de sobreposição
-    for (let i = 0; i < layouts.length; i++) {
-      const current = layouts[i];
-      const currentStart = new Date(current.agendamento.datetime_start);
-      const currentEnd = new Date(current.agendamento.datetime_end);
-      
-      let maxColumn = current.column;
-      
-      // Verifica todos os agendamentos que se sobrepõem com o atual
-      for (let j = 0; j < layouts.length; j++) {
-        if (i === j) continue;
-        const other = layouts[j];
-        const otherStart = new Date(other.agendamento.datetime_start);
-        const otherEnd = new Date(other.agendamento.datetime_end);
-        
-        // Verifica se há sobreposição
-        if (currentStart < otherEnd && currentEnd > otherStart) {
-          maxColumn = Math.max(maxColumn, other.column);
-        }
-      }
-      
-      current.totalColumns = maxColumn + 1;
-    }
-
-    return layouts;
-  };
-
-  const calcularPosicaoAgendamento = (agendamento: Agendamento, column: number, totalColumns: number) => {
+  // Calcula posição baseado nos slots dinâmicos
+  const calcularPosicaoAgendamento = (agendamento: Agendamento) => {
     const inicio = new Date(agendamento.datetime_start);
     const horaInicio = inicio.getHours();
     const minutoInicio = inicio.getMinutes();
-    const topPercent = ((horaInicio - 8) * 60 + minutoInicio) / (12 * 60) * 100;
-    const heightPercent = (agendamento.tempo_total_minutos / (12 * 60)) * 100;
     
-    const widthPercent = 100 / totalColumns;
-    const leftPercent = column * widthPercent;
+    // Encontra o índice do slot correspondente ou o mais próximo anterior
+    let slotIndex = 0;
+    for (let i = 0; i < slotsHorarios.length; i++) {
+      const slot = slotsHorarios[i];
+      const slotMinutos = slot.hora * 60 + slot.minuto;
+      const agMinutos = horaInicio * 60 + minutoInicio;
+      
+      if (slotMinutos <= agMinutos) {
+        slotIndex = i;
+      } else {
+        break;
+      }
+    }
+    
+    // Calcula offset dentro do slot
+    const slotAtual = slotsHorarios[slotIndex];
+    const proximoSlot = slotsHorarios[slotIndex + 1];
+    
+    const slotAtualMinutos = slotAtual.hora * 60 + slotAtual.minuto;
+    const agMinutos = horaInicio * 60 + minutoInicio;
+    
+    let duracaoSlot = 60; // padrão 1 hora
+    if (proximoSlot) {
+      duracaoSlot = (proximoSlot.hora * 60 + proximoSlot.minuto) - slotAtualMinutos;
+    }
+    
+    const offsetDentroSlot = (agMinutos - slotAtualMinutos) / duracaoSlot;
+    
+    const topPercent = ((slotIndex + offsetDentroSlot) / slotsHorarios.length) * 100;
+    
+    // Calcula altura baseada na duração
+    const duracaoTotalSlots = agendamento.tempo_total_minutos / (12 * 60 / slotsHorarios.length * slotsHorarios.length / 13);
+    const heightPercent = (agendamento.tempo_total_minutos / (12 * 60)) * 100 * (slotsHorarios.length / 13);
     
     return { 
-      top: `${topPercent}%`, 
-      height: `${Math.max(heightPercent, 4)}%`,
-      width: `calc(${widthPercent}% - 2px)`,
-      left: `calc(${leftPercent}% + 1px)`
+      top: `${Math.max(0, topPercent)}%`, 
+      height: `${Math.max(heightPercent, 100 / slotsHorarios.length)}%`
     };
   };
 
@@ -244,16 +262,16 @@ export const WeeklyCalendar = ({
           </div>
 
           {/* Time Grid - uses flex to fill available space */}
-          <div className="grid grid-cols-[50px_repeat(7,1fr)] flex-1 min-h-0">
+          <div className="grid grid-cols-[50px_repeat(7,1fr)] flex-1 min-h-0 overflow-y-auto">
             {/* Hours Column */}
             <div className="flex flex-col">
-              {HORARIOS.map((hora) => (
+              {slotsHorarios.map((slot, index) => (
                 <div 
-                  key={hora} 
-                  className="flex-1 flex items-start justify-end pr-2 min-h-[28px]"
+                  key={`${slot.hora}-${slot.minuto}`} 
+                  className="flex-1 flex items-start justify-end pr-2 min-h-[40px]"
                 >
                   <span className="text-[10px] text-muted-foreground -mt-1">
-                    {hora.toString().padStart(2, '0')}:00
+                    {slot.label}
                   </span>
                 </div>
               ))}
@@ -268,9 +286,26 @@ export const WeeklyCalendar = ({
               const currentHour = currentTime.getHours();
               const currentMinute = currentTime.getMinutes();
               const isWithinSchedule = currentHour >= 8 && currentHour < 20;
-              const timeLinePosition = isWithinSchedule 
-                ? ((currentHour - 8) * 60 + currentMinute) / (12 * 60) * 100 
-                : -1;
+              
+              // Calcula posição da linha do tempo atual baseado nos slots
+              let timeLinePosition = -1;
+              if (isWithinSchedule) {
+                const currentMinutos = currentHour * 60 + currentMinute;
+                for (let i = 0; i < slotsHorarios.length; i++) {
+                  const slot = slotsHorarios[i];
+                  const slotMinutos = slot.hora * 60 + slot.minuto;
+                  const proximoSlot = slotsHorarios[i + 1];
+                  const proximoMinutos = proximoSlot 
+                    ? proximoSlot.hora * 60 + proximoSlot.minuto 
+                    : slotMinutos + 60;
+                  
+                  if (currentMinutos >= slotMinutos && currentMinutos < proximoMinutos) {
+                    const offset = (currentMinutos - slotMinutos) / (proximoMinutos - slotMinutos);
+                    timeLinePosition = ((i + offset) / slotsHorarios.length) * 100;
+                    break;
+                  }
+                }
+              }
               
               return (
                 <div 
@@ -282,15 +317,15 @@ export const WeeklyCalendar = ({
                   )}
                 >
                   {/* Hour slots */}
-                  {HORARIOS.map((hora) => (
+                  {slotsHorarios.map((slot) => (
                     <div 
-                      key={hora} 
-                      className="flex-1 border-b border-border/20 hover:bg-secondary/30 transition-colors min-h-[28px]"
+                      key={`${slot.hora}-${slot.minuto}`} 
+                      className="flex-1 border-b border-border/20 hover:bg-secondary/30 transition-colors min-h-[40px]"
                     />
                   ))}
                   
                   {/* Current time line */}
-                  {showCurrentTimeLine && isWithinSchedule && (
+                  {showCurrentTimeLine && timeLinePosition >= 0 && (
                     <div 
                       className="absolute left-0 right-0 z-20 pointer-events-none flex items-center"
                       style={{ top: `${timeLinePosition}%` }}
@@ -301,9 +336,9 @@ export const WeeklyCalendar = ({
                   )}
                   
                   {/* Appointments */}
-                  <div className="absolute inset-0 pointer-events-none">
-                    {calcularLayoutAgendamentos(agendamentosDia).map(({ agendamento: ag, column, totalColumns }) => {
-                      const pos = calcularPosicaoAgendamento(ag, column, totalColumns);
+                  <div className="absolute inset-0 pointer-events-none px-0.5">
+                    {agendamentosDia.map((ag) => {
+                      const pos = calcularPosicaoAgendamento(ag);
                       const cores = getCorServico(ag.servico);
                       
                       return (
@@ -312,7 +347,7 @@ export const WeeklyCalendar = ({
                             <div
                               onClick={() => onSelecionarAgendamento?.(ag)}
                               className={cn(
-                                "absolute rounded-md px-1 py-0.5 overflow-hidden",
+                                "absolute left-0.5 right-0.5 rounded-md px-1 py-0.5 overflow-hidden",
                                 "cursor-pointer pointer-events-auto transition-all",
                                 "hover:ring-2 hover:ring-primary/50 hover:z-30",
                                 cores.bg, cores.border, "border-l-[3px]"
@@ -320,15 +355,13 @@ export const WeeklyCalendar = ({
                               style={{ 
                                 top: pos.top, 
                                 height: pos.height, 
-                                width: pos.width,
-                                left: pos.left,
-                                minHeight: '24px' 
+                                minHeight: '36px' 
                               }}
                             >
-                              <div className={cn("text-[9px] font-medium truncate", cores.text)}>
+                              <div className={cn("text-[10px] font-medium truncate", cores.text)}>
                                 {ag.hora_agendada}
                               </div>
-                              <div className="text-[10px] font-semibold text-foreground truncate">
+                              <div className="text-[11px] font-semibold text-foreground truncate">
                                 {ag.nome_cliente}
                               </div>
                             </div>
