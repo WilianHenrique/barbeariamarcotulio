@@ -80,13 +80,80 @@ export const WeeklyCalendar = ({
     return agendamentos.filter(ag => isSameDay(new Date(ag.datetime_start), dia));
   };
 
-  const calcularPosicaoAgendamento = (agendamento: Agendamento) => {
+  // Detecta sobreposições e calcula colunas para cada agendamento
+  const calcularLayoutAgendamentos = (agendamentosDia: Agendamento[]) => {
+    if (agendamentosDia.length === 0) return [];
+
+    // Ordena por hora de início
+    const sorted = [...agendamentosDia].sort((a, b) => 
+      new Date(a.datetime_start).getTime() - new Date(b.datetime_start).getTime()
+    );
+
+    const layouts: { agendamento: Agendamento; column: number; totalColumns: number }[] = [];
+    const columns: { end: Date }[] = [];
+
+    for (const ag of sorted) {
+      const start = new Date(ag.datetime_start);
+      const end = new Date(ag.datetime_end);
+
+      // Encontra a primeira coluna disponível (onde o último agendamento já terminou)
+      let columnIndex = columns.findIndex(col => col.end <= start);
+      
+      if (columnIndex === -1) {
+        // Nenhuma coluna disponível, cria uma nova
+        columnIndex = columns.length;
+        columns.push({ end });
+      } else {
+        // Atualiza o fim da coluna
+        columns[columnIndex].end = end;
+      }
+
+      layouts.push({ agendamento: ag, column: columnIndex, totalColumns: 0 });
+    }
+
+    // Calcula o número total de colunas para cada grupo de sobreposição
+    for (let i = 0; i < layouts.length; i++) {
+      const current = layouts[i];
+      const currentStart = new Date(current.agendamento.datetime_start);
+      const currentEnd = new Date(current.agendamento.datetime_end);
+      
+      let maxColumn = current.column;
+      
+      // Verifica todos os agendamentos que se sobrepõem com o atual
+      for (let j = 0; j < layouts.length; j++) {
+        if (i === j) continue;
+        const other = layouts[j];
+        const otherStart = new Date(other.agendamento.datetime_start);
+        const otherEnd = new Date(other.agendamento.datetime_end);
+        
+        // Verifica se há sobreposição
+        if (currentStart < otherEnd && currentEnd > otherStart) {
+          maxColumn = Math.max(maxColumn, other.column);
+        }
+      }
+      
+      current.totalColumns = maxColumn + 1;
+    }
+
+    return layouts;
+  };
+
+  const calcularPosicaoAgendamento = (agendamento: Agendamento, column: number, totalColumns: number) => {
     const inicio = new Date(agendamento.datetime_start);
     const horaInicio = inicio.getHours();
     const minutoInicio = inicio.getMinutes();
     const topPercent = ((horaInicio - 8) * 60 + minutoInicio) / (12 * 60) * 100;
     const heightPercent = (agendamento.tempo_total_minutos / (12 * 60)) * 100;
-    return { top: `${topPercent}%`, height: `${Math.max(heightPercent, 4)}%` };
+    
+    const widthPercent = 100 / totalColumns;
+    const leftPercent = column * widthPercent;
+    
+    return { 
+      top: `${topPercent}%`, 
+      height: `${Math.max(heightPercent, 4)}%`,
+      width: `calc(${widthPercent}% - 2px)`,
+      left: `calc(${leftPercent}% + 1px)`
+    };
   };
 
   const getCorServico = (servico: string) => {
@@ -234,9 +301,9 @@ export const WeeklyCalendar = ({
                   )}
                   
                   {/* Appointments */}
-                  <div className="absolute inset-0 pointer-events-none px-0.5">
-                    {agendamentosDia.map((ag) => {
-                      const pos = calcularPosicaoAgendamento(ag);
+                  <div className="absolute inset-0 pointer-events-none">
+                    {calcularLayoutAgendamentos(agendamentosDia).map(({ agendamento: ag, column, totalColumns }) => {
+                      const pos = calcularPosicaoAgendamento(ag, column, totalColumns);
                       const cores = getCorServico(ag.servico);
                       
                       return (
@@ -245,12 +312,18 @@ export const WeeklyCalendar = ({
                             <div
                               onClick={() => onSelecionarAgendamento?.(ag)}
                               className={cn(
-                                "absolute left-0.5 right-0.5 rounded-md px-1 py-0.5 overflow-hidden",
+                                "absolute rounded-md px-1 py-0.5 overflow-hidden",
                                 "cursor-pointer pointer-events-auto transition-all",
                                 "hover:ring-2 hover:ring-primary/50 hover:z-30",
                                 cores.bg, cores.border, "border-l-[3px]"
                               )}
-                              style={{ top: pos.top, height: pos.height, minHeight: '24px' }}
+                              style={{ 
+                                top: pos.top, 
+                                height: pos.height, 
+                                width: pos.width,
+                                left: pos.left,
+                                minHeight: '24px' 
+                              }}
                             >
                               <div className={cn("text-[9px] font-medium truncate", cores.text)}>
                                 {ag.hora_agendada}
