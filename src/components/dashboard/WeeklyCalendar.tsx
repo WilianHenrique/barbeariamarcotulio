@@ -110,9 +110,24 @@ export const WeeklyCalendar = ({
   };
 
   const diasSemana = useMemo(() => {
-    const inicio = startOfWeek(currentDate, { weekStartsOn: 0 });
-    const fim = endOfWeek(currentDate, { weekStartsOn: 0 });
-    return eachDayOfInterval({ start: inicio, end: fim });
+    const hoje = startOfDay(new Date());
+    const inicioSemana = startOfWeek(currentDate, { weekStartsOn: 0 });
+    const fimSemana = endOfWeek(currentDate, { weekStartsOn: 0 });
+
+    const todosDias = eachDayOfInterval({ start: inicioSemana, end: fimSemana });
+
+    // Se a semana inteira está no passado, mantém todos os dias (permite navegar para trás)
+    if (isBefore(fimSemana, hoje)) {
+      return todosDias;
+    }
+
+    // Se a semana é totalmente futura (início hoje ou depois), mantém todos os dias
+    if (!isBefore(inicioSemana, hoje)) {
+      return todosDias;
+    }
+
+    // Semana que contém o dia de hoje: mostra apenas de hoje em diante
+    return todosDias.filter((dia) => !isBefore(startOfDay(dia), hoje));
   }, [currentDate]);
 
   // Gera slots dinâmicos baseado nos agendamentos da semana
@@ -182,14 +197,23 @@ export const WeeklyCalendar = ({
   };
 
   const rangeLabel = useMemo(() => {
-    const inicio = startOfWeek(currentDate, { weekStartsOn: 0 });
-    const fim = endOfWeek(currentDate, { weekStartsOn: 0 });
-    
+    if (!diasSemana.length) {
+      const inicio = startOfWeek(currentDate, { weekStartsOn: 0 });
+      const fim = endOfWeek(currentDate, { weekStartsOn: 0 });
+      if (inicio.getMonth() === fim.getMonth()) {
+        return `${format(inicio, 'd')} - ${format(fim, 'd')} de ${format(fim, 'MMMM', { locale: ptBR })}`;
+      }
+      return `${format(inicio, 'd MMM', { locale: ptBR })} - ${format(fim, 'd MMM', { locale: ptBR })}`;
+    }
+
+    const inicio = diasSemana[0];
+    const fim = diasSemana[diasSemana.length - 1];
+
     if (inicio.getMonth() === fim.getMonth()) {
       return `${format(inicio, 'd')} - ${format(fim, 'd')} de ${format(fim, 'MMMM', { locale: ptBR })}`;
     }
     return `${format(inicio, 'd MMM', { locale: ptBR })} - ${format(fim, 'd MMM', { locale: ptBR })}`;
-  }, [currentDate]);
+  }, [currentDate, diasSemana]);
 
   return (
     <div className="elegant-card overflow-hidden">
