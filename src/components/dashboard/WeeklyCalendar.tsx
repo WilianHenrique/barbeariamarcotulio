@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
-import { format, addWeeks, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay, isToday, isBefore, startOfDay } from "date-fns";
+import { format, addWeeks, addDays, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay, isToday, isBefore, startOfDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -110,24 +110,9 @@ export const WeeklyCalendar = ({
   };
 
   const diasSemana = useMemo(() => {
-    const hoje = startOfDay(getBrasiliaTime());
-    const inicioSemana = startOfWeek(currentDate, { weekStartsOn: 0 });
-    const fimSemana = endOfWeek(currentDate, { weekStartsOn: 0 });
-
-    const todosDias = eachDayOfInterval({ start: inicioSemana, end: fimSemana });
-
-    // Se a semana inteira está no passado, mantém todos os dias (permite navegar para trás)
-    if (isBefore(fimSemana, hoje)) {
-      return todosDias;
-    }
-
-    // Se a semana é totalmente futura (início hoje ou depois), mantém todos os dias
-    if (!isBefore(inicioSemana, hoje)) {
-      return todosDias;
-    }
-
-    // Semana que contém o dia de hoje: mostra apenas de hoje em diante
-    return todosDias.filter((dia) => !isBefore(startOfDay(dia), hoje));
+    const inicio = startOfDay(currentDate);
+    const fim = startOfDay(addDays(inicio, 6));
+    return eachDayOfInterval({ start: inicio, end: fim });
   }, [currentDate]);
 
   // Gera slots dinâmicos baseado nos agendamentos da semana
