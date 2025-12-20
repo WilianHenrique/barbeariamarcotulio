@@ -45,71 +45,83 @@ export function BuscadorHorarios({ agendamentos, onSelecionarHorario }: Buscador
   const [servicoSelecionado, setServicoSelecionado] = useState<string>("");
   const [tempoCustomizado, setTempoCustomizado] = useState<string>("");
   const [mostrarResultados, setMostrarResultados] = useState(false);
+  const [filtrosAtivos, setFiltrosAtivos] = useState<{
+    data: Date | null;
+    tempoMinutos: number | null;
+  } | null>(null);
 
   // Horário comercial (8h às 20h)
   const HORA_INICIO = 8;
   const HORA_FIM = 20;
   const INTERVALO_MINUTOS = 30;
 
-  // Calcula o tempo necessário
+  // Calcula o tempo necessário (apenas para exibição e preparação do filtro)
   const tempoNecessario = useMemo(() => {
     if (tempoCustomizado && parseInt(tempoCustomizado) > 0) {
       return parseInt(tempoCustomizado);
     }
     if (servicoSelecionado) {
-      const servico = SERVICOS_PADRAO.find(s => s.nome === servicoSelecionado);
+      const servico = SERVICOS_PADRAO.find((s) => s.nome === servicoSelecionado);
       return servico?.minutos || 30;
     }
     return 30; // padrão
   }, [servicoSelecionado, tempoCustomizado]);
 
-  // Busca horários disponíveis
+  // Busca horários disponíveis apenas quando o usuário clicar em "Buscar Horários"
   const horariosDisponiveis = useMemo((): HorarioDisponivel[] => {
-    if (!dataSelecionada) return [];
+    if (!filtrosAtivos || !filtrosAtivos.data || !filtrosAtivos.tempoMinutos) return [];
+
+    const dataBase = filtrosAtivos.data;
+    const duracaoMinutos = filtrosAtivos.tempoMinutos;
 
     const resultado: HorarioDisponivel[] = [];
-    const diaInicio = startOfDay(dataSelecionada);
-    
-    // Agendamentos do dia selecionado
-    const agendamentosDoDia = agendamentos.filter(a => {
-      const dataAgendamento = startOfDay(parseISO(a.datetime_start));
-      return dataAgendamento.getTime() === diaInicio.getTime();
-    }).sort((a, b) => 
-      parseISO(a.datetime_start).getTime() - parseISO(b.datetime_start).getTime()
-    );
+    const diaInicio = startOfDay(dataBase);
+
+    // Agendamentos do dia selecionado nos filtros
+    const agendamentosDoDia = agendamentos
+      .filter((a) => {
+        const dataAgendamento = startOfDay(parseISO(a.datetime_start));
+        return dataAgendamento.getTime() === diaInicio.getTime();
+      })
+      .sort(
+        (a, b) =>
+          parseISO(a.datetime_start).getTime() - parseISO(b.datetime_start).getTime()
+      );
 
     // Gera todos os slots possíveis do dia
     const totalSlots = ((HORA_FIM - HORA_INICIO) * 60) / INTERVALO_MINUTOS;
-    
+
     for (let i = 0; i < totalSlots; i++) {
       const minutosDoInicio = HORA_INICIO * 60 + i * INTERVALO_MINUTOS;
       const horaAtual = Math.floor(minutosDoInicio / 60);
       const minutoAtual = minutosDoInicio % 60;
-      
-      const inicioSlot = new Date(dataSelecionada);
+
+      const inicioSlot = new Date(dataBase);
       inicioSlot.setHours(horaAtual, minutoAtual, 0, 0);
-      
-      const fimSlot = addMinutes(inicioSlot, tempoNecessario);
-      
+
+      const fimSlot = addMinutes(inicioSlot, duracaoMinutos);
+
       // Verifica se o slot ultrapassa o horário comercial
-      if (fimSlot.getHours() > HORA_FIM || 
-          (fimSlot.getHours() === HORA_FIM && fimSlot.getMinutes() > 0)) {
+      if (
+        fimSlot.getHours() > HORA_FIM ||
+        (fimSlot.getHours() === HORA_FIM && fimSlot.getMinutes() > 0)
+      ) {
         continue;
       }
 
       // Verifica se já passou (apenas para hoje)
       const agora = new Date();
-      if (startOfDay(dataSelecionada).getTime() === startOfDay(agora).getTime()) {
+      if (startOfDay(dataBase).getTime() === startOfDay(agora).getTime()) {
         if (isBefore(inicioSlot, agora)) {
           continue;
         }
       }
 
       // Verifica conflitos com agendamentos existentes
-      const temConflito = agendamentosDoDia.some(agendamento => {
+      const temConflito = agendamentosDoDia.some((agendamento) => {
         const agendamentoInicio = parseISO(agendamento.datetime_start);
         const agendamentoFim = parseISO(agendamento.datetime_end);
-        
+
         // Verifica se há sobreposição
         return (
           (inicioSlot >= agendamentoInicio && inicioSlot < agendamentoFim) ||
@@ -122,15 +134,19 @@ export function BuscadorHorarios({ agendamentos, onSelecionarHorario }: Buscador
         resultado.push({
           inicio: inicioSlot,
           fim: fimSlot,
-          label: `${format(inicioSlot, 'HH:mm')} - ${format(fimSlot, 'HH:mm')}`,
+          label: `${format(inicioSlot, "HH:mm")} - ${format(fimSlot, "HH:mm")}`,
         });
       }
     }
 
     return resultado;
-  }, [dataSelecionada, agendamentos, tempoNecessario]);
+  }, [filtrosAtivos, agendamentos, HORA_FIM, HORA_INICIO, INTERVALO_MINUTOS]);
 
   const handleBuscar = () => {
+    setFiltrosAtivos({
+      data: dataSelecionada,
+      tempoMinutos: tempoNecessario,
+    });
     setMostrarResultados(true);
   };
 
@@ -226,10 +242,12 @@ export function BuscadorHorarios({ agendamentos, onSelecionarHorario }: Buscador
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <h4 className="font-medium text-foreground">
-              {horariosDisponiveis.length} horário{horariosDisponiveis.length !== 1 ? 's' : ''} disponível{horariosDisponiveis.length !== 1 ? 'eis' : ''}
+              {horariosDisponiveis.length} horário
+              {horariosDisponiveis.length !== 1 ? "s" : ""} disponível
+              {horariosDisponiveis.length !== 1 ? "eis" : ""}
             </h4>
             <span className="text-sm text-muted-foreground">
-              Duração: {tempoNecessario} min
+              Duração: {filtrosAtivos?.tempoMinutos ?? tempoNecessario} min
             </span>
           </div>
 
