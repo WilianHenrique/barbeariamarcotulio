@@ -7,6 +7,7 @@ import { QuickStats } from "@/components/dashboard/QuickStats";
 import { WeeklyCalendar } from "@/components/dashboard/WeeklyCalendar";
 import { AppointmentDialog } from "@/components/dashboard/AppointmentDialog";
 import { EditAppointmentDialog } from "@/components/dashboard/EditAppointmentDialog";
+import { BuscadorHorarios } from "@/components/dashboard/BuscadorHorarios";
 import { AppointmentList } from "@/components/dashboard/AppointmentList";
 import { MensagensAgendadas } from "@/components/dashboard/MensagensAgendadas";
 import { RelatorioGeral } from "@/components/dashboard/RelatorioGeral";
@@ -177,7 +178,15 @@ const Dashboard = () => {
 
           {/* Content based on active tab */}
           {activeTab === "agenda" && (
-            <div>
+            <div className="space-y-6">
+              <BuscadorHorarios
+                agendamentos={agendamentos}
+                onSelecionarHorario={(data, horario) => {
+                  toast.success(`Horário ${horario} selecionado!`);
+                  setShowNovoAgendamento(true);
+                }}
+              />
+              
               <WeeklyCalendar
                 agendamentos={agendamentos.filter(a => new Date(a.datetime_start) >= startOfDay(new Date()))}
                 onNovoAgendamento={() => setShowNovoAgendamento(true)}
