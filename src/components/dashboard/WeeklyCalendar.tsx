@@ -91,7 +91,7 @@ export const WeeklyCalendar = ({
   onNovoAgendamento,
   onSelecionarAgendamento 
 }: WeeklyCalendarProps) => {
-  const [currentDate, setCurrentDate] = useState(new Date());
+  const [currentDate, setCurrentDate] = useState(getBrasiliaTime());
   const [currentTime, setCurrentTime] = useState(getBrasiliaTime());
 
   useEffect(() => {
@@ -106,11 +106,11 @@ export const WeeklyCalendar = ({
   };
 
   const irParaHoje = () => {
-    setCurrentDate(new Date());
+    setCurrentDate(getBrasiliaTime());
   };
 
   const diasSemana = useMemo(() => {
-    const hoje = startOfDay(new Date());
+    const hoje = startOfDay(getBrasiliaTime());
     const inicioSemana = startOfWeek(currentDate, { weekStartsOn: 0 });
     const fimSemana = endOfWeek(currentDate, { weekStartsOn: 0 });
 
