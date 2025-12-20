@@ -14,6 +14,7 @@ import { ClientesList } from "@/components/dashboard/ClientesList";
 import { Input } from "@/components/ui/input";
 import { Search, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { startOfDay } from "date-fns";
 
 interface Agendamento {
   id: string;
@@ -178,12 +179,13 @@ const Dashboard = () => {
           {activeTab === "agenda" && (
             <div>
               <WeeklyCalendar
-                agendamentos={agendamentos}
+                agendamentos={agendamentos.filter(a => new Date(a.datetime_start) >= startOfDay(new Date()))}
                 onNovoAgendamento={() => setShowNovoAgendamento(true)}
                 onSelecionarAgendamento={handleSelectAgendamento}
               />
             </div>
           )}
+
 
           {activeTab === "pendentes" && (
             <div className="space-y-4">
