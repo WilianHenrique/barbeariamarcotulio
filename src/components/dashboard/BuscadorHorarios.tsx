@@ -53,7 +53,7 @@ export function BuscadorHorarios({ agendamentos, onSelecionarHorario }: Buscador
   // Horário comercial (8h às 20h)
   const HORA_INICIO = 8;
   const HORA_FIM = 20;
-  const INTERVALO_MINUTOS = 30;
+  const INTERVALO_MINUTOS = 15;
 
   // Carregar serviços do banco de dados
   useEffect(() => {
