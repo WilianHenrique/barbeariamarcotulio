@@ -42,7 +42,7 @@ interface Servico {
 const HORARIOS_TRABALHO = {
   inicio: 8,
   fim: 20,
-  intervalo: 30,
+  intervalo: 15,
 };
 
 type RecorrenciaType = "unico" | "semanal" | "mensal" | "personalizado";
