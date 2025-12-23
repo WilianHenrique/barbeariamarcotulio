@@ -35,7 +35,6 @@ const SERVICOS_PADRAO = [
   { nome: "Corte de Cabelo", minutos: 30 },
   { nome: "Barba", minutos: 20 },
   { nome: "Corte + Barba", minutos: 50 },
-  { nome: "Hidratação", minutos: 40 },
   { nome: "Pezinho", minutos: 15 },
   { nome: "Sobrancelha", minutos: 10 },
 ];
