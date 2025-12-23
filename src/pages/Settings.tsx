@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Copy, Check, ArrowLeft, Bell } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
+import { GerenciadorServicos } from "@/components/dashboard/GerenciadorServicos";
 
 const Settings = () => {
   const navigate = useNavigate();
@@ -36,10 +37,13 @@ const Settings = () => {
           <CardHeader>
             <CardTitle className="text-3xl font-display text-primary">Configurações do Sistema</CardTitle>
             <CardDescription className="text-muted-foreground text-base">
-              Endpoints e configurações de integração
+              Gerenciamento de serviços e integrações
             </CardDescription>
           </CardHeader>
         </Card>
+
+        {/* Gerenciamento de Serviços */}
+        <GerenciadorServicos />
 
         {/* Webhook de Recepção */}
         <Card className="barber-card border-primary/20">

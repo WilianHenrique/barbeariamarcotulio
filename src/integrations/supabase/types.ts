@@ -175,6 +175,39 @@ export type Database = {
         }
         Relationships: []
       }
+      servicos: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          duracao_minutos: number
+          id: string
+          nome: string
+          ordem: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          duracao_minutos: number
+          id?: string
+          nome: string
+          ordem?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          duracao_minutos?: number
+          id?: string
+          nome?: string
+          ordem?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

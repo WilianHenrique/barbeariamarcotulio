@@ -31,14 +31,13 @@ interface Agendamento {
   tempo_total_minutos: number;
 }
 
-const SERVICOS = [
-  { id: "barba", nome: "Barba", tempoSugerido: 30 },
-  { id: "cabelo", nome: "Cabelo", tempoSugerido: 45 },
-  { id: "sobrancelha", nome: "Sobrancelha", tempoSugerido: 15 },
-  { id: "barba_cabelo", nome: "Barba + Cabelo", tempoSugerido: 60 },
-  { id: "pezinho", nome: "Pezinho", tempoSugerido: 15 },
-  { id: "barba_cabelo_sobrancelha", nome: "Barba + Cabelo + Sobrancelha", tempoSugerido: 75 },
-];
+interface Servico {
+  id: string;
+  nome: string;
+  duracao_minutos: number;
+  ativo: boolean;
+  ordem: number;
+}
 
 const HORARIOS_TRABALHO = {
   inicio: 8,
@@ -99,7 +98,32 @@ export const NovoAgendamentoDialog = ({
   const [recorrenciaPersonalizada, setRecorrenciaPersonalizada] = useState(2);
   const [showConfirmacao, setShowConfirmacao] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [servicos, setServicos] = useState<Servico[]>([]);
   const sugestoesRef = useRef<HTMLDivElement>(null);
+
+  // Carregar serviços do banco de dados
+  useEffect(() => {
+    const carregarServicos = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+
+        const { data, error } = await supabase
+          .from('servicos')
+          .select('*')
+          .eq('user_id', user.id)
+          .eq('ativo', true)
+          .order('ordem');
+
+        if (error) throw error;
+        setServicos(data || []);
+      } catch (error) {
+        console.error('Erro ao carregar serviços:', error);
+      }
+    };
+
+    carregarServicos();
+  }, []);
 
   // Reset form quando abre
   useEffect(() => {
@@ -120,12 +144,12 @@ export const NovoAgendamentoDialog = ({
   // Atualiza tempo sugerido quando seleciona serviço
   useEffect(() => {
     if (servicoSelecionado) {
-      const servico = SERVICOS.find(s => s.id === servicoSelecionado);
+      const servico = servicos.find(s => s.id === servicoSelecionado);
       if (servico) {
-        setTempoServico(servico.tempoSugerido);
+        setTempoServico(servico.duracao_minutos);
       }
     }
-  }, [servicoSelecionado]);
+  }, [servicoSelecionado, servicos]);
 
   // Buscar clientes conforme digita
   useEffect(() => {
@@ -262,7 +286,7 @@ export const NovoAgendamentoDialog = ({
         return;
       }
 
-      const servico = SERVICOS.find(s => s.id === servicoSelecionado);
+      const servico = servicos.find(s => s.id === servicoSelecionado);
       const datasParaAgendar: Date[] = [];
       
       if (tipoRecorrencia === 'unico') {
@@ -460,20 +484,26 @@ export const NovoAgendamentoDialog = ({
               Serviço *
             </Label>
             <div className="grid grid-cols-2 gap-2">
-              {SERVICOS.map((servico) => (
-                <button
-                  key={servico.id}
-                  onClick={() => setServicoSelecionado(servico.id)}
-                  className={`p-3 rounded-lg border-2 transition-all text-left ${
-                    servicoSelecionado === servico.id
+              {servicos.length === 0 ? (
+                <div className="col-span-2 text-center py-4 text-muted-foreground text-sm">
+                  Nenhum serviço cadastrado. Adicione serviços nas Configurações.
+                </div>
+              ) : (
+                servicos.map((servico) => (
+                  <button
+                    key={servico.id}
+                    onClick={() => setServicoSelecionado(servico.id)}
+                    className={`p-3 rounded-lg border-2 transition-all text-left ${
+                      servicoSelecionado === servico.id
                       ? 'border-primary bg-primary/10 shadow-glow'
                       : 'border-border bg-secondary/30 hover:border-primary/50'
                   }`}
                 >
-                  <span className="font-medium text-foreground block text-sm">{servico.nome}</span>
-                  <span className="text-xs text-muted-foreground">{servico.tempoSugerido} min</span>
-                </button>
-              ))}
+                    <span className="font-medium text-foreground block text-sm">{servico.nome}</span>
+                    <span className="text-xs text-muted-foreground">{servico.duracao_minutos} min</span>
+                  </button>
+                ))
+              )}
             </div>
           </div>
 
@@ -605,7 +635,7 @@ export const NovoAgendamentoDialog = ({
                 <span className="text-muted-foreground">Cliente:</span>
                 <span className="text-foreground font-medium">{nomeCliente}</span>
                 <span className="text-muted-foreground">Serviço:</span>
-                <span className="text-foreground">{SERVICOS.find(s => s.id === servicoSelecionado)?.nome}</span>
+                <span className="text-foreground">{servicos.find(s => s.id === servicoSelecionado)?.nome}</span>
                 <span className="text-muted-foreground">Data:</span>
                 <span className="text-foreground">{format(dataSelecionada, "dd/MM/yyyy")}</span>
                 <span className="text-muted-foreground">Horário:</span>

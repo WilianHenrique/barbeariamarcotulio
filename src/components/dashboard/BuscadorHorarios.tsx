@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -7,9 +7,10 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card } from "@/components/ui/card";
 import { Calendar as CalendarIcon, Clock, Search } from "lucide-react";
-import { format, addMinutes, isBefore, isAfter, startOfDay, parseISO } from "date-fns";
+import { format, addMinutes, isBefore, startOfDay, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Agendamento {
   id: string;
@@ -30,20 +31,20 @@ interface HorarioDisponivel {
   label: string;
 }
 
-// Serviços pré-definidos com tempos
-const SERVICOS_PADRAO = [
-  { nome: "Corte de Cabelo", minutos: 30 },
-  { nome: "Barba", minutos: 20 },
-  { nome: "Corte + Barba", minutos: 50 },
-  { nome: "Pezinho", minutos: 15 },
-  { nome: "Sobrancelha", minutos: 10 },
-];
+interface Servico {
+  id: string;
+  nome: string;
+  duracao_minutos: number;
+  ativo: boolean;
+  ordem: number;
+}
 
 export function BuscadorHorarios({ agendamentos, onSelecionarHorario }: BuscadorHorariosProps) {
   const [dataSelecionada, setDataSelecionada] = useState<Date>(new Date());
   const [servicoSelecionado, setServicoSelecionado] = useState<string>("");
   const [tempoCustomizado, setTempoCustomizado] = useState<string>("");
   const [mostrarResultados, setMostrarResultados] = useState(false);
+  const [servicos, setServicos] = useState<Servico[]>([]);
   const [filtrosAtivos, setFiltrosAtivos] = useState<{
     data: Date | null;
     tempoMinutos: number | null;
@@ -54,17 +55,41 @@ export function BuscadorHorarios({ agendamentos, onSelecionarHorario }: Buscador
   const HORA_FIM = 20;
   const INTERVALO_MINUTOS = 30;
 
+  // Carregar serviços do banco de dados
+  useEffect(() => {
+    const carregarServicos = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+
+        const { data, error } = await supabase
+          .from('servicos')
+          .select('*')
+          .eq('user_id', user.id)
+          .eq('ativo', true)
+          .order('ordem');
+
+        if (error) throw error;
+        setServicos(data || []);
+      } catch (error) {
+        console.error('Erro ao carregar serviços:', error);
+      }
+    };
+
+    carregarServicos();
+  }, []);
+
   // Calcula o tempo necessário (apenas para exibição e preparação do filtro)
   const tempoNecessario = useMemo(() => {
     if (tempoCustomizado && parseInt(tempoCustomizado) > 0) {
       return parseInt(tempoCustomizado);
     }
     if (servicoSelecionado) {
-      const servico = SERVICOS_PADRAO.find((s) => s.nome === servicoSelecionado);
-      return servico?.minutos || 30;
+      const servico = servicos.find((s) => s.id === servicoSelecionado);
+      return servico?.duracao_minutos || 30;
     }
     return 30; // padrão
-  }, [servicoSelecionado, tempoCustomizado]);
+  }, [servicoSelecionado, tempoCustomizado, servicos]);
 
   // Busca horários disponíveis apenas quando o usuário clicar em "Buscar Horários"
   const horariosDisponiveis = useMemo((): HorarioDisponivel[] => {
@@ -205,11 +230,17 @@ export function BuscadorHorarios({ agendamentos, onSelecionarHorario }: Buscador
               <SelectValue placeholder="Selecione o serviço" />
             </SelectTrigger>
             <SelectContent>
-              {SERVICOS_PADRAO.map((servico) => (
-                <SelectItem key={servico.nome} value={servico.nome}>
-                  {servico.nome} ({servico.minutos} min)
-                </SelectItem>
-              ))}
+              {servicos.length === 0 ? (
+                <div className="px-2 py-3 text-sm text-muted-foreground">
+                  Nenhum serviço cadastrado
+                </div>
+              ) : (
+                servicos.map((servico) => (
+                  <SelectItem key={servico.id} value={servico.id}>
+                    {servico.nome} ({servico.duracao_minutos} min)
+                  </SelectItem>
+                ))
+              )}
             </SelectContent>
           </Select>
         </div>
