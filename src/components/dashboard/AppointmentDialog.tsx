@@ -28,14 +28,13 @@ interface Agendamento {
   tempo_total_minutos: number;
 }
 
-const SERVICOS = [
-  { id: "barba", nome: "Barba", tempo: 30 },
-  { id: "cabelo", nome: "Cabelo", tempo: 45 },
-  { id: "sobrancelha", nome: "Sobrancelha", tempo: 15 },
-  { id: "barba_cabelo", nome: "Barba + Cabelo", tempo: 60 },
-  { id: "pezinho", nome: "Pezinho", tempo: 15 },
-  { id: "combo", nome: "Barba + Cabelo + Sobrancelha", tempo: 75 },
-];
+interface Servico {
+  id: string;
+  nome: string;
+  duracao_minutos: number;
+  ativo: boolean;
+  ordem: number;
+}
 
 const formatarTelefone = (value: string) => {
   const numeros = value.replace(/\D/g, '');
@@ -70,14 +69,46 @@ export const AppointmentDialog = ({
   const [telefoneEditavel, setTelefoneEditavel] = useState(true);
   const [clientesSugestoes, setClientesSugestoes] = useState<ClienteSugestao[]>([]);
   const [showSugestoes, setShowSugestoes] = useState(false);
-  const [servicoSelecionado, setServicoSelecionado] = useState<typeof SERVICOS[0] | null>(null);
+  const [servicos, setServicos] = useState<Servico[]>([]);
+  const [servicoSelecionado, setServicoSelecionado] = useState<Servico | null>(null);
   const [servicoPersonalizado, setServicoPersonalizado] = useState("");
   const [isServicoPersonalizado, setIsServicoPersonalizado] = useState(false);
   const [tempoServico, setTempoServico] = useState(30);
   const [dataSelecionada, setDataSelecionada] = useState<Date>(new Date());
   const [horarioSelecionado, setHorarioSelecionado] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [carregandoServicos, setCarregandoServicos] = useState(false);
   const sugestoesRef = useRef<HTMLDivElement>(null);
+
+  // Carregar serviços do banco
+  useEffect(() => {
+    const carregarServicos = async () => {
+      if (!open) return;
+      
+      setCarregandoServicos(true);
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+
+        const { data, error } = await supabase
+          .from('servicos')
+          .select('*')
+          .eq('user_id', user.id)
+          .eq('ativo', true)
+          .order('ordem');
+
+        if (error) throw error;
+        console.log('AppointmentDialog: Serviços carregados:', data);
+        setServicos(data || []);
+      } catch (error) {
+        console.error('Erro ao carregar serviços:', error);
+      } finally {
+        setCarregandoServicos(false);
+      }
+    };
+
+    carregarServicos();
+  }, [open]);
 
   useEffect(() => {
     if (open) {
@@ -96,7 +127,7 @@ export const AppointmentDialog = ({
 
   useEffect(() => {
     if (servicoSelecionado && !isServicoPersonalizado) {
-      setTempoServico(servicoSelecionado.tempo);
+      setTempoServico(servicoSelecionado.duracao_minutos);
     }
   }, [servicoSelecionado, isServicoPersonalizado]);
 
@@ -153,7 +184,7 @@ export const AppointmentDialog = ({
     setShowSugestoes(false);
   };
 
-  const handleSelectServico = (servico: typeof SERVICOS[0]) => {
+  const handleSelectServico = (servico: Servico) => {
     setServicoSelecionado(servico);
     setIsServicoPersonalizado(false);
     setServicoPersonalizado("");
@@ -167,7 +198,7 @@ export const AppointmentDialog = ({
   const gerarHorariosDisponiveis = () => {
     const horarios: string[] = [];
     for (let hora = 8; hora < 20; hora++) {
-      for (let minuto = 0; minuto < 60; minuto += 30) {
+      for (let minuto = 0; minuto < 60; minuto += 15) {
         horarios.push(`${hora.toString().padStart(2, '0')}:${minuto.toString().padStart(2, '0')}`);
       }
     }
@@ -298,40 +329,52 @@ export const AppointmentDialog = ({
                   <Scissors className="h-4 w-4 text-primary" />
                   Serviço
                 </Label>
-                <div className="grid grid-cols-2 gap-2">
-                  {SERVICOS.map((servico) => (
+                {carregandoServicos ? (
+                  <div className="flex items-center justify-center py-8">
+                    <div className="animate-spin h-6 w-6 border-3 border-primary border-t-transparent rounded-full" />
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-2">
+                    {servicos.length === 0 ? (
+                      <div className="col-span-2 text-center py-4 text-muted-foreground text-sm">
+                        Nenhum serviço cadastrado. Adicione serviços nas Configurações.
+                      </div>
+                    ) : (
+                      servicos.map((servico) => (
+                        <button
+                          key={servico.id}
+                          onClick={() => handleSelectServico(servico)}
+                          className={cn(
+                            "p-3 rounded-lg border text-left transition-all text-sm",
+                            servicoSelecionado?.id === servico.id && !isServicoPersonalizado
+                              ? "border-primary bg-primary/10 text-foreground"
+                              : "border-border bg-secondary/30 text-muted-foreground hover:border-border hover:bg-secondary/50"
+                          )}
+                        >
+                          <span className="font-medium block">{servico.nome}</span>
+                          <span className="text-xs opacity-70">{servico.duracao_minutos} min</span>
+                        </button>
+                      ))
+                    )}
+                    
+                    {/* Botão Personalizado */}
                     <button
-                      key={servico.id}
-                      onClick={() => handleSelectServico(servico)}
+                      onClick={handleSelectPersonalizado}
                       className={cn(
-                        "p-3 rounded-lg border text-left transition-all text-sm",
-                        servicoSelecionado?.id === servico.id && !isServicoPersonalizado
+                        "p-3 rounded-lg border text-left transition-all text-sm col-span-2",
+                        isServicoPersonalizado
                           ? "border-primary bg-primary/10 text-foreground"
                           : "border-border bg-secondary/30 text-muted-foreground hover:border-border hover:bg-secondary/50"
                       )}
                     >
-                      <span className="font-medium block">{servico.nome}</span>
-                      <span className="text-xs opacity-70">{servico.tempo} min</span>
+                      <span className="font-medium flex items-center gap-2">
+                        <Plus className="h-4 w-4" />
+                        Personalizado
+                      </span>
+                      <span className="text-xs opacity-70">Digite o serviço e tempo</span>
                     </button>
-                  ))}
-                  
-                  {/* Botão Personalizado */}
-                  <button
-                    onClick={handleSelectPersonalizado}
-                    className={cn(
-                      "p-3 rounded-lg border text-left transition-all text-sm col-span-2",
-                      isServicoPersonalizado
-                        ? "border-primary bg-primary/10 text-foreground"
-                        : "border-border bg-secondary/30 text-muted-foreground hover:border-border hover:bg-secondary/50"
-                    )}
-                  >
-                    <span className="font-medium flex items-center gap-2">
-                      <Plus className="h-4 w-4" />
-                      Personalizado
-                    </span>
-                    <span className="text-xs opacity-70">Digite o serviço e tempo</span>
-                  </button>
-                </div>
+                  </div>
+                )}
               </div>
 
               {/* Campos para serviço personalizado */}
