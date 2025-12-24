@@ -94,6 +94,8 @@ export const NovoAgendamentoDialog = ({
   const [tempoServico, setTempoServico] = useState(30);
   const [dataSelecionada, setDataSelecionada] = useState<Date>(dataSelecionadaInicial || new Date());
   const [horarioSelecionado, setHorarioSelecionado] = useState<string | null>(null);
+  const [horarioManual, setHorarioManual] = useState("");
+  const [erroHorarioManual, setErroHorarioManual] = useState("");
   const [tipoRecorrencia, setTipoRecorrencia] = useState<RecorrenciaType>("unico");
   const [recorrenciaPersonalizada, setRecorrenciaPersonalizada] = useState(2);
   const [showConfirmacao, setShowConfirmacao] = useState(false);
@@ -152,6 +154,8 @@ export const NovoAgendamentoDialog = ({
       setTelefoneErro("");
       setServicoSelecionado(null);
       setHorarioSelecionado(null);
+      setHorarioManual("");
+      setErroHorarioManual("");
       setTipoRecorrencia("unico");
       if (dataSelecionadaInicial) {
         setDataSelecionada(dataSelecionadaInicial);
@@ -244,6 +248,34 @@ export const NovoAgendamentoDialog = ({
       setTelefoneErro("Formato: (xx) x xxxx-xxxx");
     } else {
       setTelefoneErro("");
+    }
+  };
+
+  const validarHorarioManual = (horario: string): boolean => {
+    const regex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
+    return regex.test(horario);
+  };
+
+  const handleHorarioManualChange = (valor: string) => {
+    setHorarioManual(valor);
+    setErroHorarioManual("");
+    
+    if (valor && !validarHorarioManual(valor)) {
+      setErroHorarioManual("Formato inválido. Use HH:mm (ex: 14:30)");
+      return;
+    }
+    
+    if (valor && validarHorarioManual(valor)) {
+      const ocupado = isHorarioOcupado(dataSelecionada, valor);
+      const passado = isHorarioPassado(dataSelecionada, valor);
+      
+      if (ocupado) {
+        setErroHorarioManual("Este horário já está ocupado");
+      } else if (passado) {
+        setErroHorarioManual("Este horário já passou");
+      } else {
+        setHorarioSelecionado(valor);
+      }
     }
   };
 
@@ -578,8 +610,43 @@ export const NovoAgendamentoDialog = ({
           </div>
 
           {/* Horários */}
-          <div className="space-y-2">
+          <div className="space-y-3">
             <Label className="text-foreground">Horário *</Label>
+            
+            {/* Input para horário manual */}
+            <div className="space-y-2">
+              <Label className="text-xs text-muted-foreground">Digite o horário (HH:mm)</Label>
+              <Input
+                type="text"
+                value={horarioManual}
+                onChange={(e) => handleHorarioManualChange(e.target.value)}
+                placeholder="Ex: 14:30"
+                className={cn(
+                  "font-mono",
+                  erroHorarioManual && "border-destructive focus:border-destructive"
+                )}
+                maxLength={5}
+              />
+              {erroHorarioManual && (
+                <p className="text-xs text-destructive">{erroHorarioManual}</p>
+              )}
+              {horarioManual && validarHorarioManual(horarioManual) && !erroHorarioManual && (
+                <p className="text-xs text-green-600 flex items-center gap-1">
+                  <CheckCircle2 className="h-3 w-3" />
+                  Horário válido e disponível
+                </p>
+              )}
+            </div>
+
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-card px-2 text-muted-foreground">ou selecione</span>
+              </div>
+            </div>
+
             <div className="grid grid-cols-6 gap-1.5 max-h-36 overflow-y-auto p-2 bg-secondary/20 rounded-lg">
               {horariosDisponiveis.map((horario) => {
                 const ocupado = isHorarioOcupado(dataSelecionada, horario);
@@ -589,7 +656,13 @@ export const NovoAgendamentoDialog = ({
                 return (
                   <button
                     key={horario}
-                    onClick={() => !indisponivel && setHorarioSelecionado(horario)}
+                    onClick={() => {
+                      if (!indisponivel) {
+                        setHorarioSelecionado(horario);
+                        setHorarioManual(horario);
+                        setErroHorarioManual("");
+                      }
+                    }}
                     disabled={indisponivel}
                     className={`py-1.5 px-2 rounded text-xs font-medium transition-all ${
                       horarioSelecionado === horario

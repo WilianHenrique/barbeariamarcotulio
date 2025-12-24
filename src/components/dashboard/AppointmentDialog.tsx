@@ -76,6 +76,8 @@ export const AppointmentDialog = ({
   const [tempoServico, setTempoServico] = useState(30);
   const [dataSelecionada, setDataSelecionada] = useState<Date>(new Date());
   const [horarioSelecionado, setHorarioSelecionado] = useState<string | null>(null);
+  const [horarioManual, setHorarioManual] = useState("");
+  const [erroHorarioManual, setErroHorarioManual] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [carregandoServicos, setCarregandoServicos] = useState(false);
   const sugestoesRef = useRef<HTMLDivElement>(null);
@@ -121,6 +123,8 @@ export const AppointmentDialog = ({
       setIsServicoPersonalizado(false);
       setTempoServico(30);
       setHorarioSelecionado(null);
+      setHorarioManual("");
+      setErroHorarioManual("");
       setDataSelecionada(new Date());
     }
   }, [open]);
@@ -193,6 +197,34 @@ export const AppointmentDialog = ({
   const handleSelectPersonalizado = () => {
     setServicoSelecionado(null);
     setIsServicoPersonalizado(true);
+  };
+
+  const validarHorarioManual = (horario: string): boolean => {
+    const regex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
+    return regex.test(horario);
+  };
+
+  const handleHorarioManualChange = (valor: string) => {
+    setHorarioManual(valor);
+    setErroHorarioManual("");
+    
+    if (valor && !validarHorarioManual(valor)) {
+      setErroHorarioManual("Formato inválido. Use HH:mm (ex: 14:30)");
+      return;
+    }
+    
+    if (valor && validarHorarioManual(valor)) {
+      const ocupado = isHorarioOcupado(valor);
+      const passado = isHorarioPassado(valor);
+      
+      if (ocupado) {
+        setErroHorarioManual("Este horário já está ocupado");
+      } else if (passado) {
+        setErroHorarioManual("Este horário já passou");
+      } else {
+        setHorarioSelecionado(valor);
+      }
+    }
   };
 
   const gerarHorariosDisponiveis = () => {
@@ -447,11 +479,47 @@ export const AppointmentDialog = ({
                 </Popover>
               </div>
 
-              <div className="space-y-2">
+              <div className="space-y-3">
                 <Label className="text-foreground text-sm flex items-center gap-2">
                   <Clock className="h-4 w-4 text-primary" />
-                  Horário Disponível
+                  Horário
                 </Label>
+                
+                {/* Input para horário manual */}
+                <div className="space-y-2">
+                  <Label className="text-xs text-muted-foreground">Digite o horário (HH:mm)</Label>
+                  <Input
+                    type="text"
+                    value={horarioManual}
+                    onChange={(e) => handleHorarioManualChange(e.target.value)}
+                    placeholder="Ex: 14:30"
+                    className={cn(
+                      "font-mono",
+                      erroHorarioManual && "border-destructive focus:border-destructive"
+                    )}
+                    maxLength={5}
+                  />
+                  {erroHorarioManual && (
+                    <p className="text-xs text-destructive">{erroHorarioManual}</p>
+                  )}
+                  {horarioManual && validarHorarioManual(horarioManual) && !erroHorarioManual && (
+                    <p className="text-xs text-green-600 flex items-center gap-1">
+                      <Check className="h-3 w-3" />
+                      Horário válido e disponível
+                    </p>
+                  )}
+                </div>
+
+                <div className="relative">
+                  <div className="absolute inset-0 flex items-center">
+                    <span className="w-full border-t" />
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-card px-2 text-muted-foreground">ou selecione</span>
+                  </div>
+                </div>
+
+                {/* Grade de horários */}
                 <div className="grid grid-cols-4 gap-2 max-h-48 overflow-y-auto custom-scrollbar p-1">
                   {horarios.map((horario) => {
                     const ocupado = isHorarioOcupado(horario);
@@ -461,7 +529,13 @@ export const AppointmentDialog = ({
                     return (
                       <button
                         key={horario}
-                        onClick={() => !disabled && setHorarioSelecionado(horario)}
+                        onClick={() => {
+                          if (!disabled) {
+                            setHorarioSelecionado(horario);
+                            setHorarioManual(horario);
+                            setErroHorarioManual("");
+                          }
+                        }}
                         disabled={disabled}
                         className={cn(
                           "py-2 px-3 rounded-md text-sm font-medium transition-all",
