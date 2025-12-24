@@ -122,8 +122,10 @@ export const NovoAgendamentoDialog = ({
       }
     };
 
-    carregarServicos();
-  }, []);
+    if (open) {
+      carregarServicos();
+    }
+  }, [open]);
 
   // Reset form quando abre
   useEffect(() => {
