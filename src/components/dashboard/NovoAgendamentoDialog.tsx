@@ -107,7 +107,12 @@ export const NovoAgendamentoDialog = ({
     setCarregandoServicos(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user) {
+        console.log('NovoAgendamento: Usuário não encontrado');
+        return;
+      }
+
+      console.log('NovoAgendamento: Buscando serviços para user_id:', user.id);
 
       const { data, error } = await supabase
         .from('servicos')
@@ -116,11 +121,15 @@ export const NovoAgendamentoDialog = ({
         .eq('ativo', true)
         .order('ordem');
 
-      if (error) throw error;
+      if (error) {
+        console.error('NovoAgendamento: Erro na query:', error);
+        throw error;
+      }
+      
+      console.log('NovoAgendamento: Serviços retornados do banco:', data);
       setServicos(data || []);
-      console.log('Serviços carregados:', data);
     } catch (error) {
-      console.error('Erro ao carregar serviços:', error);
+      console.error('NovoAgendamento: Erro ao carregar serviços:', error);
     } finally {
       setCarregandoServicos(false);
     }
@@ -129,6 +138,7 @@ export const NovoAgendamentoDialog = ({
   // Carregar serviços sempre que o diálogo abrir
   useEffect(() => {
     if (open) {
+      console.log('NovoAgendamento: Dialog aberto, carregando serviços...');
       carregarServicos();
     }
   }, [open]);
