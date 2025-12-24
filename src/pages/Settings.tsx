@@ -1,18 +1,95 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Copy, Check, ArrowLeft, Bell } from "lucide-react";
+import { Copy, Check, ArrowLeft, Bell, Save } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { GerenciadorServicos } from "@/components/dashboard/GerenciadorServicos";
+import { supabase } from "@/integrations/supabase/client";
 
 const Settings = () => {
   const navigate = useNavigate();
   const [copiedWebhook, setCopiedWebhook] = useState(false);
+  const [notificationUrl, setNotificationUrl] = useState("");
+  const [originalNotificationUrl, setOriginalNotificationUrl] = useState("");
+  const [loadingNotificationUrl, setLoadingNotificationUrl] = useState(true);
+  const [savingNotificationUrl, setSavingNotificationUrl] = useState(false);
 
   const webhookUrl = "https://dimwyqenkirksoatesdq.supabase.co/functions/v1/webhook-agendamentos";
+
+  useEffect(() => {
+    loadNotificationUrl();
+  }, []);
+
+  const loadNotificationUrl = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from('configuracoes')
+        .select('valor')
+        .eq('user_id', user.id)
+        .eq('chave', 'notification_url')
+        .maybeSingle();
+
+      if (error) throw error;
+
+      const url = data?.valor || 'https://automacoes.federalassociadoscadastro.com/webhook/agendamentos_marco_tulio';
+      setNotificationUrl(url);
+      setOriginalNotificationUrl(url);
+    } catch (error) {
+      console.error('Erro ao carregar URL de notificações:', error);
+      toast.error('Erro ao carregar configurações');
+    } finally {
+      setLoadingNotificationUrl(false);
+    }
+  };
+
+  const saveNotificationUrl = async () => {
+    if (!notificationUrl.trim()) {
+      toast.error('URL não pode estar vazio');
+      return;
+    }
+
+    try {
+      new URL(notificationUrl);
+    } catch {
+      toast.error('URL inválida');
+      return;
+    }
+
+    setSavingNotificationUrl(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast.error('Usuário não autenticado');
+        return;
+      }
+
+      const { error } = await supabase
+        .from('configuracoes')
+        .upsert({
+          user_id: user.id,
+          chave: 'notification_url',
+          valor: notificationUrl.trim()
+        }, {
+          onConflict: 'user_id,chave'
+        });
+
+      if (error) throw error;
+
+      setOriginalNotificationUrl(notificationUrl);
+      toast.success('URL de notificações atualizada com sucesso!');
+    } catch (error) {
+      console.error('Erro ao salvar URL:', error);
+      toast.error('Erro ao salvar configurações');
+    } finally {
+      setSavingNotificationUrl(false);
+    }
+  };
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
@@ -20,6 +97,8 @@ const Settings = () => {
     setTimeout(() => setCopiedWebhook(false), 2000);
     toast.success("URL copiada para a área de transferência!");
   };
+
+  const hasChanges = notificationUrl !== originalNotificationUrl;
 
   return (
     <div className="min-h-screen bg-background p-6">
@@ -122,7 +201,7 @@ const Settings = () => {
             </CardTitle>
           </CardHeader>
           <CardContent className="pt-6">
-            <div className="space-y-3">
+            <div className="space-y-4">
               <div className="bg-primary/5 border border-primary/30 p-4 rounded-lg">
                 <p className="text-sm font-semibold text-primary mb-2">✅ Configuração Automática Ativada</p>
                 <ul className="text-sm text-foreground space-y-1 list-disc list-inside">
@@ -133,11 +212,38 @@ const Settings = () => {
                 </ul>
               </div>
               
-              <div className="bg-secondary/50 border border-primary/20 p-4 rounded-lg">
-                <p className="text-sm font-semibold text-primary mb-2">Destino das Notificações:</p>
-                <p className="text-xs text-muted-foreground font-mono break-all">
-                  https://automacoes.federalassociadoscadastro.com/webhook/agendamentos_marco_tulio
-                </p>
+              <div className="space-y-3">
+                <Label htmlFor="notification-url" className="text-foreground font-semibold">
+                  Destino das Notificações (Webhook):
+                </Label>
+                {loadingNotificationUrl ? (
+                  <div className="flex items-center justify-center py-4">
+                    <div className="animate-spin h-5 w-5 border-2 border-primary border-t-transparent rounded-full" />
+                  </div>
+                ) : (
+                  <>
+                    <Input
+                      id="notification-url"
+                      value={notificationUrl}
+                      onChange={(e) => setNotificationUrl(e.target.value)}
+                      placeholder="https://..."
+                      className="font-mono text-sm bg-secondary border-primary/20"
+                    />
+                    <Button
+                      onClick={saveNotificationUrl}
+                      disabled={!hasChanges || savingNotificationUrl}
+                      className="w-full sm:w-auto"
+                    >
+                      <Save className="h-4 w-4 mr-2" />
+                      {savingNotificationUrl ? 'Salvando...' : 'Salvar URL'}
+                    </Button>
+                    {hasChanges && (
+                      <p className="text-xs text-muted-foreground">
+                        Você tem alterações não salvas
+                      </p>
+                    )}
+                  </>
+                )}
               </div>
             </div>
           </CardContent>

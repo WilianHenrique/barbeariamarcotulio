@@ -6,7 +6,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const WEBHOOK_URL = "https://automacoes.federalassociadoscadastro.com/webhook/agendamentos_marco_tulio";
+const DEFAULT_WEBHOOK_URL = "https://automacoes.federalassociadoscadastro.com/webhook/agendamentos_marco_tulio";
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -66,6 +66,17 @@ serve(async (req) => {
       
       for (const agendamento of agendamentos24h) {
         try {
+          // Buscar URL de notificação do usuário
+          const { data: config } = await supabaseClient
+            .from('configuracoes')
+            .select('valor')
+            .eq('user_id', agendamento.user_id)
+            .eq('chave', 'notification_url')
+            .maybeSingle();
+
+          const webhookUrl = config?.valor || DEFAULT_WEBHOOK_URL;
+          console.log(`Usando webhook URL: ${webhookUrl} para usuário ${agendamento.user_id}`);
+
           // Buscar template do usuário
           const { data: templates } = await supabaseClient
             .from('mensagens_template')
@@ -108,7 +119,7 @@ serve(async (req) => {
             mensagem_personalizada: mensagemPersonalizada
           };
 
-          const response = await fetch(WEBHOOK_URL, {
+          const response = await fetch(webhookUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
@@ -147,6 +158,17 @@ serve(async (req) => {
       
       for (const agendamento of agendamentos1h) {
         try {
+          // Buscar URL de notificação do usuário
+          const { data: config } = await supabaseClient
+            .from('configuracoes')
+            .select('valor')
+            .eq('user_id', agendamento.user_id)
+            .eq('chave', 'notification_url')
+            .maybeSingle();
+
+          const webhookUrl = config?.valor || DEFAULT_WEBHOOK_URL;
+          console.log(`Usando webhook URL: ${webhookUrl} para usuário ${agendamento.user_id}`);
+
           // Buscar template do usuário
           const { data: templates } = await supabaseClient
             .from('mensagens_template')
@@ -189,7 +211,7 @@ serve(async (req) => {
             mensagem_personalizada: mensagemPersonalizada
           };
 
-          const response = await fetch(WEBHOOK_URL, {
+          const response = await fetch(webhookUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
