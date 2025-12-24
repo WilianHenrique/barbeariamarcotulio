@@ -99,29 +99,35 @@ export const NovoAgendamentoDialog = ({
   const [showConfirmacao, setShowConfirmacao] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [servicos, setServicos] = useState<Servico[]>([]);
+  const [carregandoServicos, setCarregandoServicos] = useState(false);
   const sugestoesRef = useRef<HTMLDivElement>(null);
 
-  // Carregar serviços do banco de dados
+  // Função para carregar serviços
+  const carregarServicos = async () => {
+    setCarregandoServicos(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from('servicos')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('ativo', true)
+        .order('ordem');
+
+      if (error) throw error;
+      setServicos(data || []);
+      console.log('Serviços carregados:', data);
+    } catch (error) {
+      console.error('Erro ao carregar serviços:', error);
+    } finally {
+      setCarregandoServicos(false);
+    }
+  };
+
+  // Carregar serviços sempre que o diálogo abrir
   useEffect(() => {
-    const carregarServicos = async () => {
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
-
-        const { data, error } = await supabase
-          .from('servicos')
-          .select('*')
-          .eq('user_id', user.id)
-          .eq('ativo', true)
-          .order('ordem');
-
-        if (error) throw error;
-        setServicos(data || []);
-      } catch (error) {
-        console.error('Erro ao carregar serviços:', error);
-      }
-    };
-
     if (open) {
       carregarServicos();
     }
@@ -485,13 +491,18 @@ export const NovoAgendamentoDialog = ({
               <Scissors className="h-4 w-4 text-primary" />
               Serviço *
             </Label>
-            <div className="grid grid-cols-2 gap-2">
-              {servicos.length === 0 ? (
-                <div className="col-span-2 text-center py-4 text-muted-foreground text-sm">
-                  Nenhum serviço cadastrado. Adicione serviços nas Configurações.
-                </div>
-              ) : (
-                servicos.map((servico) => (
+            {carregandoServicos ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="animate-spin h-6 w-6 border-3 border-primary border-t-transparent rounded-full" />
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-2">
+                {servicos.length === 0 ? (
+                  <div className="col-span-2 text-center py-4 text-muted-foreground text-sm">
+                    Nenhum serviço cadastrado. Adicione serviços nas Configurações.
+                  </div>
+                ) : (
+                  servicos.map((servico) => (
                   <button
                     key={servico.id}
                     onClick={() => setServicoSelecionado(servico.id)}
@@ -504,9 +515,10 @@ export const NovoAgendamentoDialog = ({
                     <span className="font-medium text-foreground block text-sm">{servico.nome}</span>
                     <span className="text-xs text-muted-foreground">{servico.duracao_minutos} min</span>
                   </button>
-                ))
-              )}
-            </div>
+                  ))
+                )}
+              </div>
+            )}
           </div>
 
           {/* Tempo customizado */}

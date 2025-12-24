@@ -45,6 +45,7 @@ export function BuscadorHorarios({ agendamentos, onSelecionarHorario }: Buscador
   const [tempoCustomizado, setTempoCustomizado] = useState<string>("");
   const [mostrarResultados, setMostrarResultados] = useState(false);
   const [servicos, setServicos] = useState<Servico[]>([]);
+  const [carregandoServicos, setCarregandoServicos] = useState(true);
   const [filtrosAtivos, setFiltrosAtivos] = useState<{
     data: Date | null;
     tempoMinutos: number | null;
@@ -55,27 +56,32 @@ export function BuscadorHorarios({ agendamentos, onSelecionarHorario }: Buscador
   const HORA_FIM = 20;
   const INTERVALO_MINUTOS = 15;
 
-  // Carregar serviços do banco de dados
+  // Função para carregar serviços
+  const carregarServicos = async () => {
+    setCarregandoServicos(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from('servicos')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('ativo', true)
+        .order('ordem');
+
+      if (error) throw error;
+      setServicos(data || []);
+      console.log('Serviços carregados no buscador:', data);
+    } catch (error) {
+      console.error('Erro ao carregar serviços:', error);
+    } finally {
+      setCarregandoServicos(false);
+    }
+  };
+
+  // Carregar serviços ao montar o componente
   useEffect(() => {
-    const carregarServicos = async () => {
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
-
-        const { data, error } = await supabase
-          .from('servicos')
-          .select('*')
-          .eq('user_id', user.id)
-          .eq('ativo', true)
-          .order('ordem');
-
-        if (error) throw error;
-        setServicos(data || []);
-      } catch (error) {
-        console.error('Erro ao carregar serviços:', error);
-      }
-    };
-
     carregarServicos();
   }, []);
 
