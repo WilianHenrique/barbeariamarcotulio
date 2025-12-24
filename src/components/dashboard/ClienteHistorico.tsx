@@ -97,6 +97,7 @@ export const ClienteHistorico = ({ clienteNome, agendamentos }: ClienteHistorico
                   <TableHead className="text-muted-foreground font-semibold">Data</TableHead>
                   <TableHead className="text-muted-foreground font-semibold">Horário</TableHead>
                   <TableHead className="text-muted-foreground font-semibold">Serviço</TableHead>
+                  <TableHead className="text-muted-foreground font-semibold">Notificações</TableHead>
                   <TableHead className="text-muted-foreground font-semibold">Status</TableHead>
                 </TableRow>
               </TableHeader>
@@ -111,16 +112,40 @@ export const ClienteHistorico = ({ clienteNome, agendamentos }: ClienteHistorico
                       <TableCell>{agendamento.hora_agendada}</TableCell>
                       <TableCell>{agendamento.servico}</TableCell>
                       <TableCell>
+                        <div className="flex flex-col gap-1">
+                          <div className="flex items-center gap-1.5 text-xs">
+                            {agendamento.notificacao_24h_enviada ? (
+                              <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />
+                            ) : (
+                              <div className="h-3.5 w-3.5 rounded-full border border-muted-foreground/30" />
+                            )}
+                            <span className={agendamento.notificacao_24h_enviada ? "text-foreground" : "text-muted-foreground"}>
+                              24h antes
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1.5 text-xs">
+                            {agendamento.notificacao_1h_enviada ? (
+                              <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />
+                            ) : (
+                              <div className="h-3.5 w-3.5 rounded-full border border-muted-foreground/30" />
+                            )}
+                            <span className={agendamento.notificacao_1h_enviada ? "text-foreground" : "text-muted-foreground"}>
+                              1h antes
+                            </span>
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
                         {jaAconteceu ? (
                           agendamento.notificacao_24h_enviada && agendamento.notificacao_1h_enviada ? (
-                            <Badge variant="secondary">Realizado</Badge>
+                            <Badge variant="secondary" className="bg-green-500/10 text-green-600 border-green-500/20">Realizado</Badge>
                           ) : (
-                            <Badge variant="outline" className="bg-yellow-500/10 text-yellow-500 border-yellow-500/20">
+                            <Badge variant="outline" className="bg-yellow-500/10 text-yellow-600 border-yellow-500/20">
                               Parcial
                             </Badge>
                           )
                         ) : (
-                          <Badge variant="outline">Pendente</Badge>
+                          <Badge variant="outline">Agendado</Badge>
                         )}
                       </TableCell>
                     </TableRow>
