@@ -205,25 +205,40 @@ export const AppointmentDialog = ({
   };
 
   const handleHorarioManualChange = (valor: string) => {
-    setHorarioManual(valor);
-    setErroHorarioManual("");
+    // Remove qualquer caractere que não seja número
+    let numerosSomente = valor.replace(/\D/g, '');
     
-    if (valor && !validarHorarioManual(valor)) {
-      setErroHorarioManual("Formato inválido. Use HH:mm (ex: 14:30)");
-      return;
+    // Limita a 4 dígitos (HHMM)
+    if (numerosSomente.length > 4) {
+      numerosSomente = numerosSomente.slice(0, 4);
     }
     
-    if (valor && validarHorarioManual(valor)) {
-      const ocupado = isHorarioOcupado(valor);
-      const passado = isHorarioPassado(valor);
+    // Formata automaticamente com os dois pontos
+    let horarioFormatado = '';
+    if (numerosSomente.length >= 1) {
+      horarioFormatado = numerosSomente.slice(0, 2);
+      if (numerosSomente.length > 2) {
+        horarioFormatado += ':' + numerosSomente.slice(2, 4);
+      }
+    }
+    
+    setHorarioManual(horarioFormatado);
+    setErroHorarioManual("");
+    
+    // Valida apenas se tiver o formato completo HH:mm
+    if (horarioFormatado.length === 5 && validarHorarioManual(horarioFormatado)) {
+      const ocupado = isHorarioOcupado(horarioFormatado);
+      const passado = isHorarioPassado(horarioFormatado);
       
       if (ocupado) {
         setErroHorarioManual("Este horário já está ocupado");
       } else if (passado) {
         setErroHorarioManual("Este horário já passou");
       } else {
-        setHorarioSelecionado(valor);
+        setHorarioSelecionado(horarioFormatado);
       }
+    } else if (horarioFormatado.length === 5) {
+      setErroHorarioManual("Horário inválido");
     }
   };
 
