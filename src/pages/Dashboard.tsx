@@ -48,6 +48,7 @@ const Dashboard = () => {
   useEffect(() => {
     checkAuth();
     loadAgendamentos();
+    executarVerificacaoNotificacoes();
 
     const channel = supabase
       .channel('agendamentos-changes')
@@ -81,6 +82,26 @@ const Dashboard = () => {
       toast.error("Erro ao carregar agendamentos");
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const executarVerificacaoNotificacoes = async () => {
+    try {
+      const { data, error } = await supabase.functions.invoke('processar-notificacoes', {
+        body: {},
+      });
+
+      if (error) {
+        console.error('Erro ao executar verificação de notificações:', error);
+        toast.error('Erro ao verificar notificações automáticas');
+        return;
+      }
+
+      if (data?.notificacoesEnviadas) {
+        console.log('Notificações enviadas:', data.notificacoesEnviadas);
+      }
+    } catch (err) {
+      console.error('Erro inesperado ao executar verificação de notificações:', err);
     }
   };
 
