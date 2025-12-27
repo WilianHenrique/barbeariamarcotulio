@@ -5,8 +5,8 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Calendar, Clock, User, Scissors, Phone, Pencil, Check, ChevronDown, Plus } from "lucide-react";
-import { format, isSameDay, isBefore } from "date-fns";
+import { Calendar, Clock, User, Scissors, Phone, Pencil, Check, ChevronDown, Plus, Repeat } from "lucide-react";
+import { format, isSameDay, isBefore, addWeeks, addMonths, startOfDay, endOfMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -35,6 +35,8 @@ interface Servico {
   ativo: boolean;
   ordem: number;
 }
+
+type RecorrenciaType = "unico" | "semanal" | "mensal" | "personalizado";
 
 const formatarTelefone = (value: string) => {
   const numeros = value.replace(/\D/g, '');
@@ -78,6 +80,10 @@ export const AppointmentDialog = ({
   const [horarioSelecionado, setHorarioSelecionado] = useState<string | null>(null);
   const [horarioManual, setHorarioManual] = useState("");
   const [erroHorarioManual, setErroHorarioManual] = useState("");
+  const [tipoRecorrencia, setTipoRecorrencia] = useState<RecorrenciaType>("unico");
+  const [recorrenciaPersonalizada, setRecorrenciaPersonalizada] = useState(2);
+  const [diasMesRecorrentes, setDiasMesRecorrentes] = useState<number[]>([]);
+  const [diasMesTexto, setDiasMesTexto] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [carregandoServicos, setCarregandoServicos] = useState(false);
   const sugestoesRef = useRef<HTMLDivElement>(null);
@@ -126,6 +132,10 @@ export const AppointmentDialog = ({
       setHorarioManual("");
       setErroHorarioManual("");
       setDataSelecionada(new Date());
+      setTipoRecorrencia("unico");
+      setRecorrenciaPersonalizada(2);
+      setDiasMesRecorrentes([]);
+      setDiasMesTexto("");
     }
   }, [open]);
 
@@ -301,32 +311,67 @@ export const AppointmentDialog = ({
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const [hora, minuto] = horarioSelecionado.split(':').map(Number);
-      const datetimeStart = new Date(dataSelecionada);
-      datetimeStart.setHours(hora, minuto, 0, 0);
-      const datetimeEnd = new Date(datetimeStart.getTime() + tempoServico * 60 * 1000);
+      const datasParaAgendar: Date[] = [];
 
-      const { error } = await supabase.from('agendamentos').insert({
-        user_id: user.id,
-        nome_cliente: nomeCliente,
-        telefone_cliente: telefoneCliente.replace(/\D/g, '') || null,
-        servico: nomeServico,
-        datetime_start: datetimeStart.toISOString(),
-        datetime_end: datetimeEnd.toISOString(),
-        dia_agendado: format(dataSelecionada, 'yyyy-MM-dd'),
-        dia_agendado_formatado: format(dataSelecionada, "dd 'de' MMMM 'de' yyyy", { locale: ptBR }),
-        hora_agendada: horarioSelecionado,
-        hora_final: format(datetimeEnd, 'HH:mm'),
-        tempo_total_minutos: tempoServico,
-        evento_recorrente: 'Não',
-        status_evento: 'confirmado',
-        link_evento: '',
-        id_evento: `manual-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      if (tipoRecorrencia === "unico") {
+        datasParaAgendar.push(dataSelecionada);
+      } else if (tipoRecorrencia === "semanal") {
+        for (let i = 0; i < 4; i++) {
+          datasParaAgendar.push(addWeeks(startOfDay(dataSelecionada), i));
+        }
+      } else if (tipoRecorrencia === "mensal") {
+        const diaBase = dataSelecionada.getDate();
+        const diasDoMes = diasMesRecorrentes.length > 0 ? diasMesRecorrentes : [diaBase];
+        const quantidadeMeses = 3;
+
+        for (let i = 0; i < quantidadeMeses; i++) {
+          const dataMesBase = addMonths(startOfDay(dataSelecionada), i);
+          const ultimoDiaMes = endOfMonth(dataMesBase).getDate();
+
+          diasDoMes.forEach((dia) => {
+            const diaValido = Math.min(Math.max(dia, 1), ultimoDiaMes);
+            const dataMes = new Date(dataMesBase);
+            dataMes.setDate(diaValido);
+            datasParaAgendar.push(dataMes);
+          });
+        }
+      } else {
+        for (let i = 0; i < 4; i++) {
+          datasParaAgendar.push(addWeeks(startOfDay(dataSelecionada), i * recorrenciaPersonalizada));
+        }
+      }
+
+      const [hora, minuto] = horarioSelecionado.split(':').map(Number);
+
+      const agendamentos = datasParaAgendar.map((dataAgendada) => {
+        const datetimeStart = new Date(dataAgendada);
+        datetimeStart.setHours(hora, minuto, 0, 0);
+        const datetimeEnd = new Date(datetimeStart.getTime() + tempoServico * 60 * 1000);
+
+        return {
+          user_id: user.id,
+          nome_cliente: nomeCliente,
+          telefone_cliente: telefoneCliente.replace(/\D/g, '') || null,
+          servico: nomeServico,
+          datetime_start: datetimeStart.toISOString(),
+          datetime_end: datetimeEnd.toISOString(),
+          dia_agendado: format(dataAgendada, 'yyyy-MM-dd'),
+          dia_agendado_formatado: format(dataAgendada, "dd 'de' MMMM 'de' yyyy", { locale: ptBR }),
+          hora_agendada: horarioSelecionado,
+          hora_final: format(datetimeEnd, 'HH:mm'),
+          tempo_total_minutos: tempoServico,
+          evento_recorrente: tipoRecorrencia !== 'unico' ? 'Sim' : 'Não',
+          status_evento: 'confirmado',
+          link_evento: '',
+          id_evento: `manual-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        };
       });
+
+      const { error } = await supabase.from('agendamentos').insert(agendamentos);
 
       if (error) throw error;
 
-      toast.success("Agendamento criado com sucesso!");
+      toast.success(`${agendamentos.length} agendamento(s) criado(s) com sucesso!`);
       onSuccess();
       onOpenChange(false);
     } catch (error: any) {
@@ -499,7 +544,6 @@ export const AppointmentDialog = ({
                   <Clock className="h-4 w-4 text-primary" />
                   Horário
                 </Label>
-                
                 {/* Input para horário manual */}
                 <div className="space-y-2">
                   <Label className="text-xs text-muted-foreground">Digite o horário (HH:mm)</Label>
@@ -566,6 +610,116 @@ export const AppointmentDialog = ({
                     );
                   })}
                 </div>
+              </div>
+
+              {/* Recorrência */}
+              <div className="space-y-3 bg-secondary/20 rounded-lg p-4">
+                <div className="flex items-center justify-between gap-2">
+                  <Label className="text-foreground flex items-center gap-2">
+                    <Repeat className="h-4 w-4 text-primary" />
+                    Agendamento recorrente?
+                  </Label>
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      variant={tipoRecorrencia === "unico" ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setTipoRecorrencia("unico")}
+                    >
+                      Não
+                    </Button>
+                    <Button
+                      type="button"
+                      variant={tipoRecorrencia !== "unico" ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => {
+                        if (tipoRecorrencia === "unico") {
+                          setTipoRecorrencia("semanal");
+                        }
+                      }}
+                    >
+                      Sim
+                    </Button>
+                  </div>
+                </div>
+
+                {tipoRecorrencia !== "unico" && (
+                  <div className="space-y-2 text-xs text-muted-foreground">
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={tipoRecorrencia === "semanal" ? "default" : "outline"}
+                        onClick={() => setTipoRecorrencia("semanal")}
+                      >
+                        Semanal (toda semana)
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={tipoRecorrencia === "mensal" ? "default" : "outline"}
+                        onClick={() => setTipoRecorrencia("mensal")}
+                      >
+                        Mensal (dias fixos)
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={tipoRecorrencia === "personalizado" ? "default" : "outline"}
+                        onClick={() => setTipoRecorrencia("personalizado")}
+                      >
+                        Personalizado (a cada X semanas)
+                      </Button>
+                    </div>
+
+                    {tipoRecorrencia === "personalizado" && (
+                      <div className="flex items-center gap-2 mt-1">
+                        <span>A cada</span>
+                        <Input
+                          type="number"
+                          min={1}
+                          max={4}
+                          value={recorrenciaPersonalizada}
+                          onChange={(e) =>
+                            setRecorrenciaPersonalizada(
+                              Math.min(4, Math.max(1, Number(e.target.value) || 1)),
+                            )
+                          }
+                          className="w-16 h-8 bg-secondary/50 border-border text-center"
+                        />
+                        <span>semana(s)</span>
+                      </div>
+                    )}
+
+                    {tipoRecorrencia === "mensal" && (
+                      <div className="space-y-1 mt-1">
+                        <Label className="text-xs text-foreground">
+                          Dias do mês (ex: 1, 15)
+                        </Label>
+                        <Input
+                          value={diasMesTexto}
+                          onChange={(e) => {
+                            const texto = e.target.value;
+                            setDiasMesTexto(texto);
+                            const numeros = texto
+                              .split(",")
+                              .map((t) => t.trim())
+                              .filter((t) => t !== "")
+                              .map((t) => Number(t))
+                              .filter((n) => Number.isFinite(n) && n >= 1 && n <= 31);
+                            const unicos = Array.from(new Set(numeros));
+                            setDiasMesRecorrentes(unicos);
+                          }}
+                          placeholder="Deixe vazio para usar o dia selecionado"
+                          className="bg-secondary/50 border-border focus:border-primary text-xs"
+                        />
+                        <p className="text-[10px] text-muted-foreground">
+                          Serão criados horários nesses dias nos próximos 3 meses.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               <div className="flex gap-2">
