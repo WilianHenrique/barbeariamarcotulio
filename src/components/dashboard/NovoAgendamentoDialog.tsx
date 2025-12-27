@@ -98,6 +98,8 @@ export const NovoAgendamentoDialog = ({
   const [erroHorarioManual, setErroHorarioManual] = useState("");
   const [tipoRecorrencia, setTipoRecorrencia] = useState<RecorrenciaType>("unico");
   const [recorrenciaPersonalizada, setRecorrenciaPersonalizada] = useState(2);
+  const [diasMesRecorrentes, setDiasMesRecorrentes] = useState<number[]>([]);
+  const [diasMesTexto, setDiasMesTexto] = useState("");
   const [showConfirmacao, setShowConfirmacao] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [servicos, setServicos] = useState<Servico[]>([]);
@@ -157,6 +159,8 @@ export const NovoAgendamentoDialog = ({
       setHorarioManual("");
       setErroHorarioManual("");
       setTipoRecorrencia("unico");
+      setDiasMesRecorrentes([]);
+      setDiasMesTexto("");
       if (dataSelecionadaInicial) {
         setDataSelecionada(dataSelecionadaInicial);
       }
@@ -361,8 +365,20 @@ export const NovoAgendamentoDialog = ({
           datasParaAgendar.push(addWeeks(dataSelecionada, i));
         }
       } else if (tipoRecorrencia === 'mensal') {
-        for (let i = 0; i < 3; i++) {
-          datasParaAgendar.push(addMonths(dataSelecionada, i));
+        const diaBase = dataSelecionada.getDate();
+        const diasDoMes = diasMesRecorrentes.length > 0 ? diasMesRecorrentes : [diaBase];
+        const quantidadeMeses = 3;
+
+        for (let i = 0; i < quantidadeMeses; i++) {
+          const dataMesBase = addMonths(startOfDay(dataSelecionada), i);
+          const ultimoDiaMes = new Date(dataMesBase.getFullYear(), dataMesBase.getMonth() + 1, 0).getDate();
+
+          diasDoMes.forEach((dia) => {
+            const diaValido = Math.min(Math.max(dia, 1), ultimoDiaMes);
+            const dataMes = new Date(dataMesBase);
+            dataMes.setDate(diaValido);
+            datasParaAgendar.push(dataMes);
+          });
         }
       } else {
         for (let i = 0; i < 4; i++) {
