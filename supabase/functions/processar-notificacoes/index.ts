@@ -181,6 +181,11 @@ serve(async (req) => {
       
       for (const agendamento of agendamentos1h) {
         try {
+          // Normalizar telefone para apenas números (WhatsApp)
+          const telefoneWhatsApp = agendamento.telefone_cliente
+            ? agendamento.telefone_cliente.replace(/\D/g, '')
+            : '';
+
           // Buscar URL de notificação do usuário
           const { data: config } = await supabaseClient
             .from('configuracoes')
@@ -247,6 +252,7 @@ serve(async (req) => {
             tempo_evento: tempo_evento_1h,
             Status_Evento: agendamento.status_evento,
             EventoRecorrente: agendamento.evento_recorrente,
+            telefone_whatsapp: telefoneWhatsApp,
             tipo_notificacao: "Notificação de 1 hora",
             mensagem_personalizada: mensagemPersonalizada
           };
