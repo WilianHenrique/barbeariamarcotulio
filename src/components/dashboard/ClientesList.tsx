@@ -1,14 +1,14 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { Search, User, Phone, Calendar, Edit, ChevronRight } from "lucide-react";
+import { Search, User, Phone, Calendar, Edit, ChevronRight, MessageSquare, Clock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { format } from "date-fns";
+import { format, isSameWeek, isSameMonth, isSameYear } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 interface Agendamento {
@@ -33,6 +33,14 @@ interface Cliente {
   ultimoAgendamento: string;
 }
 
+interface HistoricoMensagem {
+  id: string;
+  tipo_notificacao: string;
+  mensagem_enviada: string;
+  enviado_em: string;
+  status: string;
+}
+
 export const ClientesList = ({ agendamentos, onRefresh }: ClientesListProps) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCliente, setSelectedCliente] = useState<Cliente | null>(null);
@@ -41,15 +49,18 @@ export const ClientesList = ({ agendamentos, onRefresh }: ClientesListProps) => 
   const [editNome, setEditNome] = useState("");
   const [editTelefone, setEditTelefone] = useState("");
   const [originalNome, setOriginalNome] = useState("");
+  const [periodoFiltro, setPeriodoFiltro] = useState<"todos" | "semana" | "mes" | "ano">("todos");
+  const [historicoMensagens, setHistoricoMensagens] = useState<HistoricoMensagem[]>([]);
+  const [loadingHistorico, setLoadingHistorico] = useState(false);
 
   // Agrupa clientes únicos
   const clientes = useMemo(() => {
     const clientesMap = new Map<string, Cliente>();
-    
-    agendamentos.forEach(ag => {
+
+    agendamentos.forEach((ag) => {
       const nomeNormalizado = ag.nome_cliente.trim().toLowerCase();
       const existing = clientesMap.get(nomeNormalizado);
-      
+
       if (existing) {
         existing.totalAgendamentos++;
         if (ag.dia_agendado > existing.ultimoAgendamento) {
@@ -59,40 +70,87 @@ export const ClientesList = ({ agendamentos, onRefresh }: ClientesListProps) => 
       } else {
         clientesMap.set(nomeNormalizado, {
           nome: ag.nome_cliente,
-          telefone: ag.telefone_cliente,
+          telefone: ag.telefone_cliente ?? null,
           totalAgendamentos: 1,
-          ultimoAgendamento: ag.dia_agendado
+          ultimoAgendamento: ag.dia_agendado,
         });
       }
     });
-    
-    return Array.from(clientesMap.values()).sort((a, b) => 
-      a.nome.localeCompare(b.nome, 'pt-BR')
-    );
+
+    return Array.from(clientesMap.values()).sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
   }, [agendamentos]);
 
   // Filtra clientes pela busca
   const clientesFiltrados = useMemo(() => {
     if (!searchTerm) return clientes;
     const term = searchTerm.toLowerCase();
-    return clientes.filter(c => 
-      c.nome.toLowerCase().includes(term) || 
-      c.telefone?.includes(term)
+    return clientes.filter(
+      (c) => c.nome.toLowerCase().includes(term) || (c.telefone && c.telefone.includes(term))
     );
   }, [clientes, searchTerm]);
 
-  // Agendamentos do cliente selecionado
+  // Agendamentos do cliente selecionado (todos)
   const agendamentosCliente = useMemo(() => {
     if (!selectedCliente) return [];
     return agendamentos
-      .filter(ag => ag.nome_cliente.trim().toLowerCase() === selectedCliente.nome.trim().toLowerCase())
-      .sort((a, b) => new Date(b.dia_agendado).getTime() - new Date(a.dia_agendado).getTime());
+      .filter(
+        (ag) => ag.nome_cliente.trim().toLowerCase() === selectedCliente.nome.trim().toLowerCase()
+      )
+      .sort(
+        (a, b) => new Date(b.dia_agendado).getTime() - new Date(a.dia_agendado).getTime()
+      );
   }, [agendamentos, selectedCliente]);
+
+  // Aplica filtro por período (semana, mês, ano)
+  const agendamentosFiltrados = useMemo(() => {
+    if (!selectedCliente) return [];
+    const hoje = new Date();
+
+    return agendamentosCliente.filter((ag) => {
+      const data = new Date(ag.dia_agendado);
+
+      switch (periodoFiltro) {
+        case "semana":
+          return isSameWeek(data, hoje, { weekStartsOn: 1 });
+        case "mes":
+          return isSameMonth(data, hoje);
+        case "ano":
+          return isSameYear(data, hoje);
+        default:
+          return true;
+      }
+    });
+  }, [agendamentosCliente, periodoFiltro, selectedCliente]);
 
   const handleSelectCliente = (cliente: Cliente) => {
     setSelectedCliente(cliente);
+    setPeriodoFiltro("todos");
     setShowDetails(true);
   };
+
+  // Carrega histórico de mensagens do cliente selecionado
+  useEffect(() => {
+    const loadHistoricoMensagens = async () => {
+      if (!selectedCliente) return;
+      setLoadingHistorico(true);
+      try {
+        const { data, error } = await supabase
+          .from("historico_mensagens")
+          .select("*")
+          .eq("nome_cliente", selectedCliente.nome)
+          .order("enviado_em", { ascending: false });
+
+        if (error) throw error;
+        setHistoricoMensagens(data || []);
+      } catch (error) {
+        console.error("Erro ao carregar histórico de mensagens:", error);
+      } finally {
+        setLoadingHistorico(false);
+      }
+    };
+
+    loadHistoricoMensagens();
+  }, [selectedCliente]);
 
   const handleOpenEdit = () => {
     if (selectedCliente) {
@@ -115,7 +173,7 @@ export const ClientesList = ({ agendamentos, onRefresh }: ClientesListProps) => 
         .from("agendamentos")
         .update({
           nome_cliente: editNome.trim(),
-          telefone_cliente: editTelefone.trim() || null
+          telefone_cliente: editTelefone.trim() || null,
         })
         .ilike("nome_cliente", originalNome);
 
@@ -196,7 +254,8 @@ export const ClientesList = ({ agendamentos, onRefresh }: ClientesListProps) => 
                   </div>
                   <div className="flex items-center gap-3 shrink-0">
                     <Badge variant="secondary" className="text-xs">
-                      {cliente.totalAgendamentos} agendamento{cliente.totalAgendamentos !== 1 ? 's' : ''}
+                      {cliente.totalAgendamentos} agendamento
+                      {cliente.totalAgendamentos !== 1 ? "s" : ""}
                     </Badge>
                     <ChevronRight className="w-4 h-4 text-muted-foreground" />
                   </div>
@@ -237,14 +296,48 @@ export const ClientesList = ({ agendamentos, onRefresh }: ClientesListProps) => 
                 </div>
               </div>
 
-              {/* Histórico de agendamentos */}
-              <div>
-                <h4 className="font-medium mb-3 text-sm text-muted-foreground">
-                  Histórico de Agendamentos ({agendamentosCliente.length})
-                </h4>
-                <div className="space-y-2 max-h-[300px] overflow-y-auto">
-                  {agendamentosCliente.map((ag) => (
-                    <div 
+              {/* Histórico de agendamentos com filtro por período */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <h4 className="font-medium text-sm text-muted-foreground">
+                    Histórico de Agendamentos ({agendamentosFiltrados.length}/
+                    {agendamentosCliente.length})
+                  </h4>
+                  <div className="flex gap-1">
+                    <Button
+                      variant={periodoFiltro === "todos" ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setPeriodoFiltro("todos")}
+                    >
+                      Todos
+                    </Button>
+                    <Button
+                      variant={periodoFiltro === "semana" ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setPeriodoFiltro("semana")}
+                    >
+                      Semana
+                    </Button>
+                    <Button
+                      variant={periodoFiltro === "mes" ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setPeriodoFiltro("mes")}
+                    >
+                      Mês
+                    </Button>
+                    <Button
+                      variant={periodoFiltro === "ano" ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setPeriodoFiltro("ano")}
+                    >
+                      Ano
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="space-y-2 max-h-[220px] overflow-y-auto">
+                  {agendamentosFiltrados.map((ag) => (
+                    <div
                       key={ag.id}
                       className="p-3 border border-border rounded-lg flex items-center justify-between"
                     >
@@ -254,7 +347,7 @@ export const ClientesList = ({ agendamentos, onRefresh }: ClientesListProps) => 
                           {formatDate(ag.dia_agendado)} às {ag.hora_agendada}
                         </p>
                       </div>
-                      <Badge 
+                      <Badge
                         variant={ag.status_evento === "confirmed" ? "default" : "secondary"}
                         className="text-xs"
                       >
@@ -262,7 +355,57 @@ export const ClientesList = ({ agendamentos, onRefresh }: ClientesListProps) => 
                       </Badge>
                     </div>
                   ))}
+
+                  {agendamentosFiltrados.length === 0 && (
+                    <p className="text-xs text-muted-foreground text-center py-4">
+                      Nenhum agendamento neste período.
+                    </p>
+                  )}
                 </div>
+              </div>
+
+              {/* Histórico de mensagens enviadas */}
+              <div className="pt-2 border-top border-border/40 space-y-2">
+                <h4 className="font-medium text-sm text-muted-foreground flex items-center gap-2">
+                  <MessageSquare className="w-4 h-4" />
+                  Histórico de Mensagens Enviadas
+                </h4>
+
+                {loadingHistorico ? (
+                  <p className="text-xs text-muted-foreground py-2 text-center">
+                    Carregando histórico...
+                  </p>
+                ) : historicoMensagens.length === 0 ? (
+                  <p className="text-xs text-muted-foreground py-2 text-center">
+                    Nenhuma mensagem enviada ainda para este cliente.
+                  </p>
+                ) : (
+                  <div className="space-y-2 max-h-[220px] overflow-y-auto">
+                    {historicoMensagens.map((msg) => (
+                      <div
+                        key={msg.id}
+                        className="border border-border/60 rounded-lg p-3 bg-background/40"
+                      >
+                        <div className="flex items-start justify-between mb-1">
+                          <Badge variant="outline" className="text-[10px] px-2 py-0.5">
+                            {msg.tipo_notificacao}
+                          </Badge>
+                          <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                            <Clock className="w-3 h-3" />
+                            {new Date(msg.enviado_em).toLocaleString("pt-BR")}
+                          </span>
+                        </div>
+                        <p className="text-xs text-foreground/80 whitespace-pre-wrap">
+                          {msg.mensagem_enviada}
+                        </p>
+                        <div className="mt-1 flex items-center gap-1 text-[10px] text-green-500">
+                          <span className="inline-flex h-2 w-2 rounded-full bg-green-500" />
+                          {msg.status || "enviada"}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -299,9 +442,7 @@ export const ClientesList = ({ agendamentos, onRefresh }: ClientesListProps) => 
               <Button variant="outline" onClick={() => setShowEdit(false)}>
                 Cancelar
               </Button>
-              <Button onClick={handleSaveEdit}>
-                Salvar
-              </Button>
+              <Button onClick={handleSaveEdit}>Salvar</Button>
             </div>
           </div>
         </DialogContent>
