@@ -67,6 +67,9 @@ export const NovoAgendamento = ({ onAgendamentoCriado, agendamentosExistentes }:
   const [currentDate, setCurrentDate] = useState(new Date());
   const [tipoRecorrencia, setTipoRecorrencia] = useState<RecorrenciaType>("unico");
   const [recorrenciaPersonalizada, setRecorrenciaPersonalizada] = useState(2); // semanas
+  const [isRecorrente, setIsRecorrente] = useState(false);
+  const [diasMesRecorrentes, setDiasMesRecorrentes] = useState<number[]>([]);
+  const [diasMesTexto, setDiasMesTexto] = useState("");
   const [showConfirmacao, setShowConfirmacao] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const sugestoesRef = useRef<HTMLDivElement>(null);
@@ -245,14 +248,26 @@ export const NovoAgendamento = ({ onAgendamentoCriado, agendamentosExistentes }:
       if (tipoRecorrencia === 'unico') {
         datasParaAgendar.push(dataSelecionada);
       } else if (tipoRecorrencia === 'semanal') {
-        // 4 semanas
+        // Toda semana no mesmo dia por 4 ocorrências
         for (let i = 0; i < 4; i++) {
           datasParaAgendar.push(addWeeks(dataSelecionada, i));
         }
       } else if (tipoRecorrencia === 'mensal') {
-        // 3 meses
-        for (let i = 0; i < 3; i++) {
-          datasParaAgendar.push(addMonths(dataSelecionada, i));
+        // Dias fixos no mês (ex: 1 e 15). Se não informar, usa o dia da data selecionada
+        const diaBase = dataSelecionada.getDate();
+        const diasDoMes = diasMesRecorrentes.length > 0 ? diasMesRecorrentes : [diaBase];
+        const quantidadeMeses = 3;
+
+        for (let i = 0; i < quantidadeMeses; i++) {
+          const dataMesBase = addMonths(startOfDay(dataSelecionada), i);
+          const ultimoDiaMes = endOfMonth(dataMesBase).getDate();
+
+          diasDoMes.forEach((dia) => {
+            const diaValido = Math.min(Math.max(dia, 1), ultimoDiaMes);
+            const dataMes = new Date(dataMesBase);
+            dataMes.setDate(diaValido);
+            datasParaAgendar.push(dataMes);
+          });
         }
       } else {
         // Personalizado - a cada X semanas por 4 vezes
@@ -304,6 +319,9 @@ export const NovoAgendamento = ({ onAgendamentoCriado, agendamentosExistentes }:
       setServicoSelecionado(null);
       setHorarioSelecionado(null);
       setTipoRecorrencia("unico");
+      setIsRecorrente(false);
+      setDiasMesRecorrentes([]);
+      setDiasMesTexto("");
       
       onAgendamentoCriado();
     } catch (error: any) {
