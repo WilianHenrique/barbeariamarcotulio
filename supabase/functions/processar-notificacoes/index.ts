@@ -101,18 +101,35 @@ serve(async (req) => {
             .replace(/{servico}/g, agendamento.servico)
             .replace(/{nome_cliente}/g, agendamento.nome_cliente);
 
+          // Formatar dia agendado no padrão brasileiro DD/MM/AAAA
+          const dataEvento24h = new Date(agendamento.datetime_start);
+          const diaAgendadoBR24h = `${String(dataEvento24h.getDate()).padStart(2, '0')}/${String(dataEvento24h.getMonth() + 1).padStart(2, '0')}/${dataEvento24h.getFullYear()}`;
+
+          // Calcular quanto tempo falta para o evento acontecer
+          const diffMs24h = dataEvento24h.getTime() - agora.getTime();
+          const diffMinTotal24h = Math.max(0, Math.round(diffMs24h / (1000 * 60)));
+          let tempo_evento_24h = '';
+
+          if (diffMinTotal24h >= 60) {
+            const horas = Math.floor(diffMinTotal24h / 60);
+            tempo_evento_24h = horas === 1 ? '1 hora' : `${horas} horas`;
+          } else {
+            tempo_evento_24h = `${diffMinTotal24h} minutos`;
+          }
+
           const payload = {
             id_evento: agendamento.id_evento,
             Nome_cliente: agendamento.nome_cliente,
             "dateTime-start": agendamento.datetime_start,
             "dateTime-end": agendamento.datetime_end,
             Dia_agendado_formatado: agendamento.dia_agendado_formatado,
-            Dia_agendado: agendamento.dia_agendado,
+            Dia_agendado: diaAgendadoBR24h,
             Hora_agendada: agendamento.hora_agendada,
             Hora_final: agendamento.hora_final,
             Link_evento: agendamento.link_evento,
             servico: agendamento.servico,
             tempo_total_minutos: agendamento.tempo_total_minutos.toString(),
+            tempo_evento: tempo_evento_24h,
             Status_Evento: agendamento.status_evento,
             EventoRecorrente: agendamento.evento_recorrente,
             tipo_notificacao: "Notificação de 24 horas",
@@ -193,18 +210,35 @@ serve(async (req) => {
             .replace(/{servico}/g, agendamento.servico)
             .replace(/{nome_cliente}/g, agendamento.nome_cliente);
 
+          // Formatar dia agendado no padrão brasileiro DD/MM/AAAA
+          const dataEvento1h = new Date(agendamento.datetime_start);
+          const diaAgendadoBR1h = `${String(dataEvento1h.getDate()).padStart(2, '0')}/${String(dataEvento1h.getMonth() + 1).padStart(2, '0')}/${dataEvento1h.getFullYear()}`;
+
+          // Calcular quanto tempo falta para o evento acontecer
+          const diffMs1h = dataEvento1h.getTime() - agora.getTime();
+          const diffMinTotal1h = Math.max(0, Math.round(diffMs1h / (1000 * 60)));
+          let tempo_evento_1h = '';
+
+          if (diffMinTotal1h >= 60) {
+            const horas = Math.floor(diffMinTotal1h / 60);
+            tempo_evento_1h = horas === 1 ? '1 hora' : `${horas} horas`;
+          } else {
+            tempo_evento_1h = `${diffMinTotal1h} minutos`;
+          }
+
           const payload = {
             id_evento: agendamento.id_evento,
             Nome_cliente: agendamento.nome_cliente,
             "dateTime-start": agendamento.datetime_start,
             "dateTime-end": agendamento.datetime_end,
             Dia_agendado_formatado: agendamento.dia_agendado_formatado,
-            Dia_agendado: agendamento.dia_agendado,
+            Dia_agendado: diaAgendadoBR1h,
             Hora_agendada: agendamento.hora_agendada,
             Hora_final: agendamento.hora_final,
             Link_evento: agendamento.link_evento,
             servico: agendamento.servico,
             tempo_total_minutos: agendamento.tempo_total_minutos.toString(),
+            tempo_evento: tempo_evento_1h,
             Status_Evento: agendamento.status_evento,
             EventoRecorrente: agendamento.evento_recorrente,
             tipo_notificacao: "Notificação de 1 hora",
