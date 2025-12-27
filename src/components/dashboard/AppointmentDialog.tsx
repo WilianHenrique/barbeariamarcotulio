@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar, Clock, User, Scissors, Phone, Pencil, Check, ChevronDown, Plus, Repeat } from "lucide-react";
-import { format, isSameDay, isBefore, addWeeks, addMonths, startOfDay, endOfMonth } from "date-fns";
+import { format, isSameDay, isBefore, addWeeks, addMonths, addYears, startOfDay, endOfMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -312,36 +312,47 @@ export const AppointmentDialog = ({
       if (!user) return;
 
       const datasParaAgendar: Date[] = [];
+      const inicioSerie = startOfDay(dataSelecionada);
+      const limiteSerie = addYears(inicioSerie, 1); // gerar até 1 ano à frente
 
       if (tipoRecorrencia === "unico") {
         datasParaAgendar.push(dataSelecionada);
       } else if (tipoRecorrencia === "semanal") {
-        for (let i = 0; i < 4; i++) {
-          datasParaAgendar.push(addWeeks(startOfDay(dataSelecionada), i));
+        let dataCursor = new Date(inicioSerie);
+        while (dataCursor <= limiteSerie) {
+          datasParaAgendar.push(new Date(dataCursor));
+          dataCursor = addWeeks(dataCursor, 1);
         }
       } else if (tipoRecorrencia === "mensal") {
         const diaBase = dataSelecionada.getDate();
         const diasDoMes = diasMesRecorrentes.length > 0 ? diasMesRecorrentes : [diaBase];
-        const quantidadeMeses = 3;
 
-        for (let i = 0; i < quantidadeMeses; i++) {
-          const dataMesBase = addMonths(startOfDay(dataSelecionada), i);
+        let dataMesBase = new Date(inicioSerie);
+        while (dataMesBase <= limiteSerie) {
           const ultimoDiaMes = endOfMonth(dataMesBase).getDate();
 
           diasDoMes.forEach((dia) => {
             const diaValido = Math.min(Math.max(dia, 1), ultimoDiaMes);
             const dataMes = new Date(dataMesBase);
             dataMes.setDate(diaValido);
-            datasParaAgendar.push(dataMes);
+            if (dataMes >= inicioSerie && dataMes <= limiteSerie) {
+              datasParaAgendar.push(dataMes);
+            }
           });
+
+          dataMesBase = addMonths(dataMesBase, 1);
         }
       } else {
-        for (let i = 0; i < 4; i++) {
-          datasParaAgendar.push(addWeeks(startOfDay(dataSelecionada), i * recorrenciaPersonalizada));
+        let dataCursor = new Date(inicioSerie);
+        while (dataCursor <= limiteSerie) {
+          datasParaAgendar.push(new Date(dataCursor));
+          dataCursor = addWeeks(dataCursor, recorrenciaPersonalizada);
         }
       }
 
       const [hora, minuto] = horarioSelecionado.split(':').map(Number);
+
+      const idEventoSerie = `manual-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
       const agendamentos = datasParaAgendar.map((dataAgendada) => {
         const datetimeStart = new Date(dataAgendada);
@@ -363,7 +374,7 @@ export const AppointmentDialog = ({
           evento_recorrente: tipoRecorrencia !== 'unico' ? 'Sim' : 'Não',
           status_evento: 'confirmado',
           link_evento: '',
-          id_evento: `manual-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          id_evento: tipoRecorrencia !== 'unico' ? idEventoSerie : `manual-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
         };
       });
 
@@ -714,8 +725,8 @@ export const AppointmentDialog = ({
                           className="bg-secondary/50 border-border focus:border-primary text-xs"
                         />
                         <p className="text-[10px] text-muted-foreground">
-                          Serão criados horários nesses dias nos próximos 3 meses.
-                        </p>
+                           Serão criados horários nesses dias nos próximos 12 meses.
+                         </p>
                       </div>
                     )}
                   </div>
