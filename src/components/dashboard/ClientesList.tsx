@@ -10,6 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { format, isSameWeek, isSameMonth, isSameYear } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { EditAppointmentDialog } from "./EditAppointmentDialog";
 
 interface Agendamento {
   id: string;
@@ -19,7 +20,14 @@ interface Agendamento {
   dia_agendado: string;
   hora_agendada: string;
   status_evento: string;
+  datetime_start: string;
+  datetime_end: string;
+  hora_final: string;
+  tempo_total_minutos: number;
+  notificacao_24h_enviada?: boolean | null;
+  notificacao_1h_enviada?: boolean | null;
 }
+
 
 interface ClientesListProps {
   agendamentos: Agendamento[];
@@ -52,6 +60,8 @@ export const ClientesList = ({ agendamentos, onRefresh }: ClientesListProps) => 
   const [periodoFiltro, setPeriodoFiltro] = useState<"todos" | "semana" | "mes" | "ano">("todos");
   const [historicoMensagens, setHistoricoMensagens] = useState<HistoricoMensagem[]>([]);
   const [loadingHistorico, setLoadingHistorico] = useState(false);
+  const [selectedAgendamento, setSelectedAgendamento] = useState<Agendamento | null>(null);
+  const [showEditAgendamento, setShowEditAgendamento] = useState(false);
 
   // Agrupa clientes únicos
   const clientes = useMemo(() => {
@@ -89,16 +99,24 @@ export const ClientesList = ({ agendamentos, onRefresh }: ClientesListProps) => 
     );
   }, [clientes, searchTerm]);
 
-  // Agendamentos do cliente selecionado (todos)
+  // Agendamentos do cliente selecionado (ordenados futuros primeiro, depois passados)
   const agendamentosCliente = useMemo(() => {
     if (!selectedCliente) return [];
-    return agendamentos
+    const todosDoCliente = agendamentos
       .filter(
         (ag) => ag.nome_cliente.trim().toLowerCase() === selectedCliente.nome.trim().toLowerCase()
-      )
-      .sort(
-        (a, b) => new Date(b.dia_agendado).getTime() - new Date(a.dia_agendado).getTime()
       );
+
+    const agora = new Date();
+    const futuros = todosDoCliente
+      .filter((ag) => new Date(ag.datetime_start) >= agora)
+      .sort((a, b) => new Date(a.datetime_start).getTime() - new Date(b.datetime_start).getTime());
+
+    const passados = todosDoCliente
+      .filter((ag) => new Date(ag.datetime_start) < agora)
+      .sort((a, b) => new Date(b.datetime_start).getTime() - new Date(a.datetime_start).getTime());
+
+    return [...futuros, ...passados];
   }, [agendamentos, selectedCliente]);
 
   // Aplica filtro por período (semana, mês, ano)
@@ -128,7 +146,7 @@ export const ClientesList = ({ agendamentos, onRefresh }: ClientesListProps) => 
     setShowDetails(true);
   };
 
-  // Carrega histórico de mensagens do cliente selecionado
+  // Carrega histórico de mensagens do cliente selecionado (últimas 50)
   useEffect(() => {
     const loadHistoricoMensagens = async () => {
       if (!selectedCliente) return;
@@ -138,7 +156,8 @@ export const ClientesList = ({ agendamentos, onRefresh }: ClientesListProps) => 
           .from("historico_mensagens")
           .select("*")
           .eq("nome_cliente", selectedCliente.nome)
-          .order("enviado_em", { ascending: false });
+          .order("enviado_em", { ascending: false })
+          .limit(50);
 
         if (error) throw error;
         setHistoricoMensagens(data || []);
@@ -195,6 +214,20 @@ export const ClientesList = ({ agendamentos, onRefresh }: ClientesListProps) => 
       return format(new Date(dateStr), "dd/MM/yyyy", { locale: ptBR });
     } catch {
       return dateStr;
+    }
+  };
+
+  const handleDeleteAgendamento = async (id: string, nome: string) => {
+    try {
+      const { error } = await supabase.from("agendamentos").delete().eq("id", id);
+      if (error) throw error;
+      toast.success(`Agendamento de ${nome} excluído`);
+      setShowEditAgendamento(false);
+      setSelectedAgendamento(null);
+      onRefresh();
+    } catch (error) {
+      console.error("Erro ao excluir agendamento:", error);
+      toast.error("Erro ao excluir agendamento");
     }
   };
 
@@ -336,25 +369,57 @@ export const ClientesList = ({ agendamentos, onRefresh }: ClientesListProps) => 
                 </div>
 
                 <div className="space-y-2 max-h-[220px] overflow-y-auto">
-                  {agendamentosFiltrados.map((ag) => (
-                    <div
-                      key={ag.id}
-                      className="p-3 border border-border rounded-lg flex items-center justify-between"
-                    >
-                      <div>
-                        <p className="font-medium text-sm">{ag.servico}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {formatDate(ag.dia_agendado)} às {ag.hora_agendada}
-                        </p>
-                      </div>
-                      <Badge
-                        variant={ag.status_evento === "confirmed" ? "default" : "secondary"}
-                        className="text-xs"
+                  {agendamentosFiltrados.map((ag) => {
+                    const agora = new Date();
+                    const isPast = new Date(ag.datetime_start) < agora;
+                    const futurosCliente = agendamentosCliente.filter((item) => new Date(item.datetime_start) >= agora);
+                    const proximoId = futurosCliente[0]?.id;
+
+                    const statusLabel = isPast
+                      ? "concluído"
+                      : ag.id === proximoId
+                        ? "próximo"
+                        : "pendente";
+
+                    const badgeClass = isPast
+                      ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30"
+                      : ag.id === proximoId
+                        ? "bg-amber-500/10 text-amber-400 border-amber-500/30"
+                        : "bg-sky-500/10 text-sky-400 border-sky-500/30";
+
+                    return (
+                      <div
+                        key={ag.id}
+                        className="p-3 border border-border rounded-lg flex items-center justify-between gap-3"
                       >
-                        {ag.status_evento === "confirmed" ? "Confirmado" : ag.status_evento}
-                      </Badge>
-                    </div>
-                  ))}
+                        <div>
+                          <p className="font-medium text-sm">{ag.servico}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {formatDate(ag.dia_agendado)} às {ag.hora_agendada}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Badge
+                            variant="outline"
+                            className={`text-xs capitalize ${badgeClass}`}
+                          >
+                            {statusLabel}
+                          </Badge>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-7 w-7 text-muted-foreground hover:text-primary"
+                            onClick={() => {
+                              setSelectedAgendamento(ag);
+                              setShowEditAgendamento(true);
+                            }}
+                          >
+                            <Edit className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  })}
 
                   {agendamentosFiltrados.length === 0 && (
                     <p className="text-xs text-muted-foreground text-center py-4">
@@ -412,7 +477,7 @@ export const ClientesList = ({ agendamentos, onRefresh }: ClientesListProps) => 
         </DialogContent>
       </Dialog>
 
-      {/* Dialog de edição */}
+      {/* Dialog de edição de cliente */}
       <Dialog open={showEdit} onOpenChange={setShowEdit}>
         <DialogContent>
           <DialogHeader>
@@ -447,6 +512,16 @@ export const ClientesList = ({ agendamentos, onRefresh }: ClientesListProps) => 
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Dialog de edição de agendamento */}
+      <EditAppointmentDialog
+        open={showEditAgendamento}
+        onOpenChange={setShowEditAgendamento}
+        agendamento={selectedAgendamento}
+        onSuccess={onRefresh}
+        onDelete={handleDeleteAgendamento}
+        agendamentosExistentes={agendamentos}
+      />
     </div>
   );
 };
