@@ -386,7 +386,8 @@ export const AppointmentDialog = ({
       onSuccess();
       onOpenChange(false);
     } catch (error: any) {
-      toast.error("Erro ao criar agendamento");
+      console.error('Erro ao criar agendamento:', error?.message || error);
+      toast.error(error?.message || "Erro ao criar agendamento");
     } finally {
       setIsLoading(false);
     }
