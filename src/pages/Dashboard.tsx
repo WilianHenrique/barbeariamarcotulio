@@ -33,6 +33,7 @@ interface Agendamento {
   telefone_cliente?: string | null;
   notificacao_24h_enviada: boolean;
   notificacao_1h_enviada: boolean;
+  evento_recorrente: string;
 }
 
 const Dashboard = () => {
@@ -140,7 +141,27 @@ const Dashboard = () => {
     : agendamentos;
 
   const agendamentosFuturos = agendamentosFiltrados.filter(a => new Date(a.datetime_start) > new Date());
-  const agendamentosPendentes = agendamentosFuturos.filter(a => !(a.notificacao_24h_enviada && a.notificacao_1h_enviada));
+  const agendamentosPendentesBase = agendamentosFuturos.filter(a => !(a.notificacao_24h_enviada && a.notificacao_1h_enviada));
+
+  // Para séries recorrentes, mostrar apenas o próximo agendamento de cada série
+  const gruposPendentes = agendamentosPendentesBase.reduce((acc, ag) => {
+    const chave = ag.evento_recorrente === 'Sim' && ag.id_evento ? ag.id_evento : ag.id;
+    if (!acc[chave]) acc[chave] = [];
+    acc[chave].push(ag);
+    return acc;
+  }, {} as Record<string, Agendamento[]>);
+
+  const agora = new Date();
+  const agendamentosPendentes = Object.values(gruposPendentes)
+    .map((grupo) => {
+      const futuros = grupo.filter(a => new Date(a.datetime_start) >= agora);
+      if (futuros.length === 0) return null;
+      futuros.sort((a, b) => new Date(a.datetime_start).getTime() - new Date(b.datetime_start).getTime());
+      return futuros[0];
+    })
+    .filter((a): a is Agendamento => a !== null)
+    .sort((a, b) => new Date(a.datetime_start).getTime() - new Date(b.datetime_start).getTime());
+
   const agendamentosRealizados = agendamentosFiltrados.filter(a => a.notificacao_24h_enviada && a.notificacao_1h_enviada);
 
   // Métricas
