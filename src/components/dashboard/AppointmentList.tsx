@@ -7,39 +7,47 @@ import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 
 // Calcular tempo restante formatado
-const getTempoRestante = (datetime: string, now: number): { texto: string; tipo: '24h' | '1h' | 'passado' | 'futuro' } => {
+const getTempoRestante = (
+  datetime: string,
+  now: number
+): { texto: string; tipo: "24h" | "1h" | "passado" | "futuro" } => {
   const dataEvento = new Date(datetime).getTime();
   const diff = dataEvento - now;
-  
+
   if (diff <= 0) {
-    return { texto: "Já passou", tipo: 'passado' };
+    return { texto: "Já passou", tipo: "passado" };
   }
 
   const horas = Math.floor(diff / (1000 * 60 * 60));
   const minutos = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
   const segundos = Math.floor((diff % (1000 * 60)) / 1000);
 
-  let tipo: '24h' | '1h' | 'passado' | 'futuro' = 'futuro';
-  
-  // Dentro da janela de 1h (próxima hora)
+  let tipo: "24h" | "1h" | "passado" | "futuro" = "futuro";
+
   if (horas < 1) {
-    tipo = '1h';
-  }
-  // Dentro da janela de 24h
-  else if (horas < 24) {
-    tipo = '24h';
+    tipo = "1h";
+  } else if (horas < 24) {
+    tipo = "24h";
   }
 
   if (horas > 48) {
     const dias = Math.floor(horas / 24);
     return { texto: `${dias}d ${horas % 24}h`, tipo };
   }
-  
+
   if (horas > 0) {
-    return { texto: `${horas}h ${minutos.toString().padStart(2, '0')}m ${segundos.toString().padStart(2, '0')}s`, tipo };
+    return {
+      texto: `${horas}h ${minutos.toString().padStart(2, "0")}m ${segundos
+        .toString()
+        .padStart(2, "0")}s`,
+      tipo,
+    };
   }
-  
-  return { texto: `${minutos}m ${segundos.toString().padStart(2, '0')}s`, tipo };
+
+  return {
+    texto: `${minutos}m ${segundos.toString().padStart(2, "0")}s`,
+    tipo,
+  };
 };
 
 interface Agendamento {
@@ -66,21 +74,23 @@ interface AppointmentListProps {
 
 const formatarTelefone = (telefone: string) => {
   if (telefone.length === 11) {
-    return `(${telefone.slice(0, 2)}) ${telefone.slice(2, 3)} ${telefone.slice(3, 7)}-${telefone.slice(7)}`;
+    return `(${telefone.slice(0, 2)}) ${telefone.slice(2, 3)} ${telefone.slice(
+      3,
+      7
+    )}-${telefone.slice(7)}`;
   }
   return telefone;
 };
 
-export const AppointmentList = ({ 
-  agendamentos, 
-  isLoading, 
+export const AppointmentList = ({
+  agendamentos,
+  isLoading,
   onDelete,
   onSelect,
-  emptyMessage = "Nenhum agendamento encontrado"
+  emptyMessage = "Nenhum agendamento encontrado",
 }: AppointmentListProps) => {
   const [now, setNow] = useState(Date.now());
 
-  // Atualizar contador a cada segundo
   useEffect(() => {
     const interval = setInterval(() => {
       setNow(Date.now());
@@ -123,25 +133,39 @@ export const AppointmentList = ({
     return acc;
   }, {} as Record<string, Agendamento[]>);
 
+  // Identificar o próximo agendamento global
+  const agora = new Date();
+  const futurosOrdenados = [...agendamentos]
+    .filter((ag) => new Date(ag.datetime_start) >= agora)
+    .sort(
+      (a, b) =>
+        new Date(a.datetime_start).getTime() -
+        new Date(b.datetime_start).getTime()
+    );
+  const proximoGlobalId = futurosOrdenados[0]?.id;
+
   return (
     <div className="space-y-6">
       {Object.entries(agendamentosPorData).map(([data, items]) => (
         <div key={data} className="space-y-3">
           <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
-            {format(new Date(data + 'T12:00:00'), "EEEE, dd 'de' MMMM", { locale: ptBR })}
+            {format(new Date(data + "T12:00:00"), "EEEE, dd 'de' MMMM", {
+              locale: ptBR,
+            })}
           </h3>
-          
+
           <div className="space-y-2">
             {items.map((ag) => {
               const dataEvento = new Date(ag.datetime_start);
               const isPast = dataEvento.getTime() < now;
               const tempoRestante = getTempoRestante(ag.datetime_start, now);
-              const isUrgent = tempoRestante.tipo === '1h';
-              const isProximo = tempoRestante.tipo === '24h';
+
+              const isProximo = !isPast && ag.id === proximoGlobalId;
+              const isPendente = !isPast && ag.id !== proximoGlobalId;
 
               return (
-                <div 
-                  key={ag.id} 
+                <div
+                  key={ag.id}
                   onClick={() => onSelect?.(ag)}
                   className={cn(
                     "elegant-card p-4 flex items-center gap-4 group cursor-pointer",
@@ -149,15 +173,27 @@ export const AppointmentList = ({
                     isPast && "opacity-60"
                   )}
                 >
-                  {/* Time Block */}
-                  <div className={cn(
-                    "w-16 h-16 rounded-lg flex flex-col items-center justify-center shrink-0",
-                    isUrgent ? "bg-accent/10" : isProximo ? "bg-amber-500/10" : "bg-primary/10"
-                  )}>
-                    <span className={cn(
-                      "text-lg font-semibold",
-                      isUrgent ? "text-accent" : isProximo ? "text-amber-500" : "text-primary"
-                    )}>
+                  {/* Bloco de horário */}
+                  <div
+                    className={cn(
+                      "w-16 h-16 rounded-lg flex flex-col items-center justify-center shrink-0",
+                      isProximo
+                        ? "bg-amber-500/10"
+                        : isPendente
+                        ? "bg-sky-500/10"
+                        : "bg-emerald-500/10"
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        "text-lg font-semibold",
+                        isProximo
+                          ? "text-amber-400"
+                          : isPendente
+                          ? "text-sky-400"
+                          : "text-emerald-400"
+                      )}
+                    >
                       {ag.hora_agendada}
                     </span>
                     <span className="text-xs text-muted-foreground">
@@ -184,48 +220,63 @@ export const AppointmentList = ({
                     </div>
                   </div>
 
-                  {/* Countdown Timer */}
+                  {/* Contador regressivo */}
                   {!isPast && (
-                    <div className={cn(
-                      "hidden md:flex flex-col items-center px-3 py-2 rounded-lg min-w-[100px]",
-                      isUrgent ? "bg-accent/10" : isProximo ? "bg-amber-500/10" : "bg-secondary/50"
-                    )}>
+                    <div
+                      className={cn(
+                        "hidden md:flex flex-col items-center px-3 py-2 rounded-lg min-w-[100px]",
+                        isProximo ? "bg-amber-500/10" : "bg-sky-500/10"
+                      )}
+                    >
                       <div className="flex items-center gap-1 mb-0.5">
-                        <Bell className={cn(
-                          "w-3 h-3",
-                          isUrgent ? "text-accent" : isProximo ? "text-amber-500" : "text-muted-foreground"
-                        )} />
+                        <Bell
+                          className={cn(
+                            "w-3 h-3",
+                            isProximo ? "text-amber-400" : "text-sky-400"
+                          )}
+                        />
                         <span className="text-[10px] text-muted-foreground uppercase">
-                          {isUrgent ? "Em breve" : isProximo ? "Próximo" : "Faltam"}
+                          {isProximo ? "Próximo" : "Pendente"}
                         </span>
                       </div>
-                      <span className={cn(
-                        "font-mono text-sm font-semibold",
-                        isUrgent ? "text-accent" : isProximo ? "text-amber-500" : "text-foreground"
-                      )}>
+                      <span
+                        className={cn(
+                          "font-mono text-sm font-semibold",
+                          isProximo ? "text-amber-400" : "text-sky-400"
+                        )}
+                      >
                         {tempoRestante.texto}
                       </span>
                     </div>
                   )}
 
-                  {/* Status Badge */}
+                  {/* Status */}
                   <div className="hidden sm:block">
-                    {ag.notificacao_24h_enviada && ag.notificacao_1h_enviada ? (
-                      <Badge variant="outline" className="bg-emerald-500/10 text-emerald-500 border-emerald-500/20">
-                        Notificado
+                    {isPast ? (
+                      <Badge
+                        variant="outline"
+                        className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+                      >
+                        concluído
                       </Badge>
-                    ) : isPast ? (
-                      <Badge variant="outline" className="bg-muted text-muted-foreground border-border">
-                        Concluído
+                    ) : isProximo ? (
+                      <Badge
+                        variant="outline"
+                        className="bg-amber-500/10 text-amber-400 border-amber-500/20"
+                      >
+                        próximo
                       </Badge>
                     ) : (
-                      <Badge variant="outline" className="bg-amber-500/10 text-amber-500 border-amber-500/20">
-                        Pendente
+                      <Badge
+                        variant="outline"
+                        className="bg-sky-500/10 text-sky-400 border-sky-500/20"
+                      >
+                        pendente
                       </Badge>
                     )}
                   </div>
 
-                  {/* Actions */}
+                  {/* Ações */}
                   <Button
                     variant="ghost"
                     size="icon"

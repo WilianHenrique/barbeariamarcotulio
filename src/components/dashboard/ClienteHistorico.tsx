@@ -46,7 +46,8 @@ export const ClienteHistorico = ({ clienteNome, agendamentos }: ClienteHistorico
         .from("historico_mensagens")
         .select("*")
         .eq("nome_cliente", clienteNome)
-        .order("enviado_em", { ascending: false });
+        .order("enviado_em", { ascending: false })
+        .limit(50);
 
       if (error) throw error;
       if (data) setHistoricoMensagens(data);
