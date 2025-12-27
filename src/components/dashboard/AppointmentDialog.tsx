@@ -352,7 +352,9 @@ export const AppointmentDialog = ({
 
       const [hora, minuto] = horarioSelecionado.split(':').map(Number);
 
-      const idEventoSerie = `manual-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      const idSerieRecorrente = tipoRecorrencia !== "unico"
+        ? `serie-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+        : null;
 
       const agendamentos = datasParaAgendar.map((dataAgendada) => {
         const datetimeStart = new Date(dataAgendada);
@@ -373,8 +375,8 @@ export const AppointmentDialog = ({
           tempo_total_minutos: tempoServico,
           evento_recorrente: tipoRecorrencia !== 'unico' ? 'Sim' : 'Não',
           status_evento: 'confirmado',
-          link_evento: '',
-          id_evento: tipoRecorrencia !== 'unico' ? idEventoSerie : `manual-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          link_evento: idSerieRecorrente || '',
+          id_evento: `manual-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
         };
       });
 
