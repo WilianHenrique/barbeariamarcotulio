@@ -34,6 +34,7 @@ interface Agendamento {
   notificacao_24h_enviada: boolean;
   notificacao_1h_enviada: boolean;
   evento_recorrente: string;
+  link_evento: string;
 }
 
 const Dashboard = () => {
@@ -145,7 +146,9 @@ const Dashboard = () => {
 
   // Para séries recorrentes, mostrar apenas o próximo agendamento de cada série
   const gruposPendentes = agendamentosPendentesBase.reduce((acc, ag) => {
-    const chave = ag.evento_recorrente === 'Sim' && ag.id_evento ? ag.id_evento : ag.id;
+    const chave = ag.evento_recorrente === 'Sim' && ag.link_evento
+      ? ag.link_evento
+      : ag.id;
     if (!acc[chave]) acc[chave] = [];
     acc[chave].push(ag);
     return acc;
