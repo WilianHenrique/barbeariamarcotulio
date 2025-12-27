@@ -40,7 +40,7 @@ serve(async (req) => {
       .select('*')
       .gte('datetime_start', inicio24h.toISOString())
       .lte('datetime_start', fim24h.toISOString())
-      .eq('notificacao_24h_enviada', false);
+      .or('notificacao_24h_enviada.is.null,notificacao_24h_enviada.eq.false');
 
     if (error24h) {
       console.error("Erro ao buscar agendamentos 24h:", error24h);
@@ -52,7 +52,7 @@ serve(async (req) => {
       .select('*')
       .gte('datetime_start', inicio1h.toISOString())
       .lte('datetime_start', fim1h.toISOString())
-      .eq('notificacao_1h_enviada', false);
+      .or('notificacao_1h_enviada.is.null,notificacao_1h_enviada.eq.false');
 
     if (error1h) {
       console.error("Erro ao buscar agendamentos 1h:", error1h);
