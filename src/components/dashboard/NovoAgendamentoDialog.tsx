@@ -755,20 +755,145 @@ export const NovoAgendamentoDialog = ({
             )}
           </div>
 
-          {/* Resumo */}
-          {servicoSelecionado && horarioSelecionado && nomeCliente && (
-            <div className="bg-primary/10 border border-primary/30 rounded-lg p-4">
-              <h4 className="font-display text-primary text-sm mb-2">Resumo</h4>
-              <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
-                <span className="text-muted-foreground">Cliente:</span>
-                <span className="text-foreground font-medium">{nomeCliente}</span>
-                <span className="text-muted-foreground">Serviço:</span>
-                <span className="text-foreground">{servicos.find(s => s.id === servicoSelecionado)?.nome}</span>
-                <span className="text-muted-foreground">Data:</span>
-                <span className="text-foreground">{format(dataSelecionada, "dd/MM/yyyy")}</span>
-                <span className="text-muted-foreground">Horário:</span>
-                <span className="text-foreground">{horarioSelecionado} ({tempoServico}min)</span>
+          {/* Recorrência no resumo */}
+          {servicoSelecionado && horarioSelecionado && (
+            <div className="bg-secondary/20 border border-border rounded-lg p-4 space-y-3">
+              <div className="flex items-center justify-between gap-2">
+                <Label className="text-foreground flex items-center gap-2">
+                  <Repeat className="h-4 w-4 text-primary" />
+                  Agendamento recorrente?
+                </Label>
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant={tipoRecorrencia === "unico" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setTipoRecorrencia("unico")}
+                  >
+                    Não
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={tipoRecorrencia !== "unico" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => {
+                      if (tipoRecorrencia === "unico") {
+                        setTipoRecorrencia("semanal");
+                      }
+                    }}
+                  >
+                    Sim
+                  </Button>
+                </div>
               </div>
+
+              {tipoRecorrencia !== "unico" && (
+                <div className="space-y-2 text-xs text-muted-foreground">
+                  <RadioGroup
+                    value={tipoRecorrencia}
+                    onValueChange={(v) => setTipoRecorrencia(v as RecorrenciaType)}
+                  >
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="semanal" id="resumo-semanal" />
+                        <Label htmlFor="resumo-semanal" className="cursor-pointer">
+                          Semanal (toda semana)
+                        </Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="mensal" id="resumo-mensal" />
+                        <Label htmlFor="resumo-mensal" className="cursor-pointer">
+                          Mensal (dias fixos)
+                        </Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="personalizado" id="resumo-personalizado" />
+                        <Label htmlFor="resumo-personalizado" className="cursor-pointer">
+                          Personalizado (a cada X semanas)
+                        </Label>
+                      </div>
+                    </div>
+                  </RadioGroup>
+
+                  {tipoRecorrencia === "personalizado" && (
+                    <div className="flex items-center gap-2">
+                      <span>A cada</span>
+                      <Select
+                        value={recorrenciaPersonalizada.toString()}
+                        onValueChange={(v) =>
+                          setRecorrenciaPersonalizada(Number(v))
+                        }
+                      >
+                        <SelectTrigger className="w-16 bg-secondary/50 h-7">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {[1, 2, 3, 4].map((n) => (
+                            <SelectItem key={n} value={n.toString()}>
+                              {n}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <span>semana(s)</span>
+                    </div>
+                  )}
+
+                  {tipoRecorrencia === "mensal" && (
+                    <div className="space-y-1">
+                      <Label className="text-xs text-foreground">
+                        Dias do mês (ex: 1, 15)
+                      </Label>
+                      <Input
+                        value={diasMesTexto}
+                        onChange={(e) => {
+                          const texto = e.target.value;
+                          setDiasMesTexto(texto);
+                          const numeros = texto
+                            .split(",")
+                            .map((t) => t.trim())
+                            .filter((t) => t !== "")
+                            .map((t) => Number(t))
+                            .filter(
+                              (n) => Number.isFinite(n) && n >= 1 && n <= 31,
+                            );
+                          const unicos = Array.from(new Set(numeros));
+                          setDiasMesRecorrentes(unicos);
+                        }}
+                        placeholder="Deixe vazio para usar o dia selecionado"
+                        className="bg-secondary/50 border-border focus:border-primary text-xs"
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Resumo */}
+              {nomeCliente && (
+                <div className="bg-primary/5 border border-primary/30 rounded-lg p-3 mt-2">
+                  <h4 className="font-display text-primary text-sm mb-2">
+                    Resumo
+                  </h4>
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+                    <span className="text-muted-foreground">Cliente:</span>
+                    <span className="text-foreground font-medium">
+                      {nomeCliente}
+                    </span>
+                    <span className="text-muted-foreground">Serviço:</span>
+                    <span className="text-foreground">
+                      {servicos.find((s) => s.id === servicoSelecionado)?.nome}
+                    </span>
+                    <span className="text-muted-foreground">Data:</span>
+                    <span className="text-foreground">
+                      {format(dataSelecionada, "dd/MM/yyyy")}
+                    </span>
+                    <span className="text-muted-foreground">Horário:</span>
+                    <span className="text-foreground">
+                      {horarioSelecionado} ({tempoServico}min)
+                    </span>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
