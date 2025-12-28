@@ -63,7 +63,7 @@ export const QuickStats = ({ totalPendentes, proximas24h, realizados, totalMes }
         icon={Calendar}
       />
       <StatCard 
-        label="Próximas 24h" 
+        label="Pendentes Hoje" 
         value={proximas24h} 
         icon={Clock}
         variant="warning"
