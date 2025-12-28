@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Search, User, Phone, Calendar, Edit, ChevronRight, MessageSquare, Clock, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { format, isSameWeek, isSameMonth, isSameYear } from "date-fns";
+import { format, isSameWeek, isSameMonth, isSameYear, parse } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { EditAppointmentDialog } from "./EditAppointmentDialog";
 import {
@@ -136,7 +136,7 @@ export const ClientesList = ({ agendamentos, onRefresh }: ClientesListProps) => 
     const hoje = new Date();
 
     return agendamentosCliente.filter((ag) => {
-      const data = new Date(ag.dia_agendado);
+      const data = parse(ag.dia_agendado, "yyyy-MM-dd", new Date());
 
       switch (periodoFiltro) {
         case "semana":
@@ -222,7 +222,8 @@ export const ClientesList = ({ agendamentos, onRefresh }: ClientesListProps) => 
 
   const formatDate = (dateStr: string) => {
     try {
-      return format(new Date(dateStr), "dd/MM/yyyy", { locale: ptBR });
+      const parsed = parse(dateStr, "yyyy-MM-dd", new Date());
+      return format(parsed, "dd/MM/yyyy", { locale: ptBR });
     } catch {
       return dateStr;
     }
