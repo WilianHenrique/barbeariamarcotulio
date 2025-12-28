@@ -13,14 +13,16 @@ interface Servico {
   duracao_minutos: number;
   ativo: boolean;
   ordem: number;
+  preco_normal: number;
+  preco_fidelidade: number;
 }
 
 export const GerenciadorServicos = () => {
   const [servicos, setServicos] = useState<Servico[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [editandoId, setEditandoId] = useState<string | null>(null);
-  const [novoServico, setNovoServico] = useState({ nome: "", duracao: "" });
-  const [editServico, setEditServico] = useState({ nome: "", duracao: "" });
+  const [novoServico, setNovoServico] = useState({ nome: "", duracao: "", precoNormal: "", precoFidelidade: "" });
+  const [editServico, setEditServico] = useState({ nome: "", duracao: "", precoNormal: "", precoFidelidade: "" });
   const [adicionando, setAdicionando] = useState(false);
 
   useEffect(() => {
@@ -49,14 +51,27 @@ export const GerenciadorServicos = () => {
   };
 
   const adicionarServico = async () => {
-    if (!novoServico.nome.trim() || !novoServico.duracao) {
+    if (!novoServico.nome.trim() || !novoServico.duracao || !novoServico.precoNormal || !novoServico.precoFidelidade) {
       toast.error("Preencha todos os campos");
       return;
     }
 
     const duracao = parseInt(novoServico.duracao);
+    const precoNormal = parseFloat(novoServico.precoNormal);
+    const precoFidelidade = parseFloat(novoServico.precoFidelidade);
+    
     if (duracao <= 0) {
       toast.error("Duração deve ser maior que 0");
+      return;
+    }
+    
+    if (precoNormal <= 0 || precoFidelidade <= 0) {
+      toast.error("Preços devem ser maiores que 0");
+      return;
+    }
+    
+    if (precoFidelidade > precoNormal) {
+      toast.error("Preço fidelidade deve ser menor ou igual ao preço normal");
       return;
     }
 
@@ -72,6 +87,8 @@ export const GerenciadorServicos = () => {
           user_id: user.id,
           nome: novoServico.nome.trim(),
           duracao_minutos: duracao,
+          preco_normal: precoNormal,
+          preco_fidelidade: precoFidelidade,
           ordem: maxOrdem + 1,
           ativo: true
         });
@@ -79,7 +96,7 @@ export const GerenciadorServicos = () => {
       if (error) throw error;
 
       toast.success("Serviço adicionado com sucesso!");
-      setNovoServico({ nome: "", duracao: "" });
+      setNovoServico({ nome: "", duracao: "", precoNormal: "", precoFidelidade: "" });
       setAdicionando(false);
       carregarServicos();
     } catch (error: any) {
@@ -91,19 +108,34 @@ export const GerenciadorServicos = () => {
     setEditandoId(servico.id);
     setEditServico({
       nome: servico.nome,
-      duracao: servico.duracao_minutos.toString()
+      duracao: servico.duracao_minutos.toString(),
+      precoNormal: servico.preco_normal.toString(),
+      precoFidelidade: servico.preco_fidelidade.toString()
     });
   };
 
   const salvarEdicao = async (id: string) => {
-    if (!editServico.nome.trim() || !editServico.duracao) {
+    if (!editServico.nome.trim() || !editServico.duracao || !editServico.precoNormal || !editServico.precoFidelidade) {
       toast.error("Preencha todos os campos");
       return;
     }
 
     const duracao = parseInt(editServico.duracao);
+    const precoNormal = parseFloat(editServico.precoNormal);
+    const precoFidelidade = parseFloat(editServico.precoFidelidade);
+    
     if (duracao <= 0) {
       toast.error("Duração deve ser maior que 0");
+      return;
+    }
+    
+    if (precoNormal <= 0 || precoFidelidade <= 0) {
+      toast.error("Preços devem ser maiores que 0");
+      return;
+    }
+    
+    if (precoFidelidade > precoNormal) {
+      toast.error("Preço fidelidade deve ser menor ou igual ao preço normal");
       return;
     }
 
@@ -112,7 +144,9 @@ export const GerenciadorServicos = () => {
         .from('servicos')
         .update({
           nome: editServico.nome.trim(),
-          duracao_minutos: duracao
+          duracao_minutos: duracao,
+          preco_normal: precoNormal,
+          preco_fidelidade: precoFidelidade
         })
         .eq('id', id);
 
@@ -128,7 +162,7 @@ export const GerenciadorServicos = () => {
 
   const cancelarEdicao = () => {
     setEditandoId(null);
-    setEditServico({ nome: "", duracao: "" });
+    setEditServico({ nome: "", duracao: "", precoNormal: "", precoFidelidade: "" });
   };
 
   const excluirServico = async (id: string) => {
@@ -184,7 +218,7 @@ export const GerenciadorServicos = () => {
             >
               {editandoId === servico.id ? (
                 <>
-                  <div className="flex-1 grid grid-cols-2 gap-3">
+                  <div className="flex-1 grid grid-cols-1 md:grid-cols-4 gap-3">
                     <Input
                       value={editServico.nome}
                       onChange={(e) => setEditServico({ ...editServico, nome: e.target.value })}
@@ -201,6 +235,30 @@ export const GerenciadorServicos = () => {
                         className="bg-background border-primary/20"
                       />
                       <span className="text-sm text-muted-foreground whitespace-nowrap">min</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-muted-foreground">R$</span>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        value={editServico.precoNormal}
+                        onChange={(e) => setEditServico({ ...editServico, precoNormal: e.target.value })}
+                        placeholder="Preço"
+                        min="0"
+                        className="bg-background border-primary/20"
+                      />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-muted-foreground">R$</span>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        value={editServico.precoFidelidade}
+                        onChange={(e) => setEditServico({ ...editServico, precoFidelidade: e.target.value })}
+                        placeholder="Fidelidade"
+                        min="0"
+                        className="bg-background border-primary/20"
+                      />
                     </div>
                   </div>
                   <div className="flex gap-2">
@@ -227,6 +285,14 @@ export const GerenciadorServicos = () => {
                   <div className="flex-1">
                     <h4 className="font-medium text-foreground">{servico.nome}</h4>
                     <p className="text-sm text-muted-foreground">{servico.duracao_minutos} minutos</p>
+                    <div className="flex gap-3 mt-1">
+                      <p className="text-xs text-muted-foreground">
+                        Normal: <span className="text-primary font-medium">R$ {servico.preco_normal.toFixed(2)}</span>
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        Fidelidade: <span className="text-accent font-medium">R$ {servico.preco_fidelidade.toFixed(2)}</span>
+                      </p>
+                    </div>
                   </div>
                   <div className="flex gap-2">
                     <Button
@@ -261,7 +327,7 @@ export const GerenciadorServicos = () => {
         {/* Adicionar Novo Serviço */}
         {adicionando ? (
           <div className="p-4 bg-primary/5 border border-primary/20 rounded-lg space-y-3">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
               <div className="space-y-2">
                 <Label htmlFor="novo-nome" className="text-foreground">Nome do Serviço</Label>
                 <Input
@@ -284,6 +350,32 @@ export const GerenciadorServicos = () => {
                   className="bg-background border-primary/20"
                 />
               </div>
+              <div className="space-y-2">
+                <Label htmlFor="novo-preco-normal" className="text-foreground">Preço Normal (R$)</Label>
+                <Input
+                  id="novo-preco-normal"
+                  type="number"
+                  step="0.01"
+                  value={novoServico.precoNormal}
+                  onChange={(e) => setNovoServico({ ...novoServico, precoNormal: e.target.value })}
+                  placeholder="Ex: 50.00"
+                  min="0"
+                  className="bg-background border-primary/20"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="novo-preco-fidelidade" className="text-foreground">Preço Fidelidade (R$)</Label>
+                <Input
+                  id="novo-preco-fidelidade"
+                  type="number"
+                  step="0.01"
+                  value={novoServico.precoFidelidade}
+                  onChange={(e) => setNovoServico({ ...novoServico, precoFidelidade: e.target.value })}
+                  placeholder="Ex: 40.00"
+                  min="0"
+                  className="bg-background border-primary/20"
+                />
+              </div>
             </div>
             <div className="flex gap-2">
               <Button
@@ -296,7 +388,7 @@ export const GerenciadorServicos = () => {
               <Button
                 onClick={() => {
                   setAdicionando(false);
-                  setNovoServico({ nome: "", duracao: "" });
+                  setNovoServico({ nome: "", duracao: "", precoNormal: "", precoFidelidade: "" });
                 }}
                 variant="outline"
                 className="border-primary/30 hover:bg-primary/10"

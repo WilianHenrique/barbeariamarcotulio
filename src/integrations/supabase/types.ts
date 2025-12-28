@@ -210,6 +210,8 @@ export type Database = {
           id: string
           nome: string
           ordem: number
+          preco_fidelidade: number
+          preco_normal: number
           updated_at: string
           user_id: string
         }
@@ -220,6 +222,8 @@ export type Database = {
           id?: string
           nome: string
           ordem?: number
+          preco_fidelidade?: number
+          preco_normal?: number
           updated_at?: string
           user_id: string
         }
@@ -230,6 +234,8 @@ export type Database = {
           id?: string
           nome?: string
           ordem?: number
+          preco_fidelidade?: number
+          preco_normal?: number
           updated_at?: string
           user_id?: string
         }
