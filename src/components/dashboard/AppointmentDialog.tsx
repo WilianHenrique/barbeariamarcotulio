@@ -308,6 +308,17 @@ export const AppointmentDialog = ({
       return;
     }
 
+    // Validações específicas para recorrência
+    if (tipoRecorrencia === "semanal" && diasSemanaSelecionados.length === 0) {
+      toast.error("Selecione pelo menos um dia da semana para o agendamento semanal.");
+      return;
+    }
+
+    if (tipoRecorrencia === "mensal" && diasSemanaSelecionados.length === 0) {
+      toast.error("Selecione pelo menos um dia da semana para o agendamento mensal.");
+      return;
+    }
+
     setIsLoading(true);
 
     try {
@@ -320,11 +331,12 @@ export const AppointmentDialog = ({
       const inicioSerie = startOfDay(dataSelecionada);
       const limiteSerie = addYears(inicioSerie, 1);
 
+      console.log("criarAgendamento - tipoRecorrencia:", tipoRecorrencia, "diasSemanaSelecionados:", diasSemanaSelecionados, "dataSelecionada weekday:", getDay(dataSelecionada));
+
       if (tipoRecorrencia === "unico") {
         datasParaAgendar.push(dataSelecionada);
       } else if (tipoRecorrencia === "semanal") {
-        const diasSemana =
-          diasSemanaSelecionados.length > 0 ? diasSemanaSelecionados : [getDay(dataSelecionada)];
+        const diasSemana = diasSemanaSelecionados;
 
         let dataCursor = new Date(inicioSerie);
         while (dataCursor <= limiteSerie) {
@@ -334,9 +346,7 @@ export const AppointmentDialog = ({
           dataCursor.setDate(dataCursor.getDate() + 1);
         }
       } else if (tipoRecorrencia === "mensal") {
-        const diaSemanaSelecionada = getDay(dataSelecionada);
-        const diasSemana =
-          diasSemanaSelecionados.length > 0 ? diasSemanaSelecionados : [diaSemanaSelecionada];
+        const diasSemana = diasSemanaSelecionados;
 
         let dataMesBase = new Date(inicioSerie);
         while (dataMesBase <= limiteSerie) {
