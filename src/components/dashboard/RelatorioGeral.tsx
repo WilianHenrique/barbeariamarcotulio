@@ -76,7 +76,8 @@ export const RelatorioGeral = ({ agendamentos }: RelatorioGeralProps) => {
 
     const agendamentosFiltrados = agendamentos.filter(ag => {
       const dataAgendamento = new Date(ag.datetime_start);
-      return dataAgendamento >= dataInicio && dataAgendamento <= dataFim;
+      // Considera apenas agendamentos que já aconteceram E estão dentro do período
+      return dataAgendamento >= dataInicio && dataAgendamento <= dataFim && dataAgendamento < agora;
     });
 
     let ganhoTotal = 0;
