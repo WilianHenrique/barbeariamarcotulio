@@ -16,6 +16,7 @@ import { cn } from "@/lib/utils";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import logoBarbearia from "@/assets/logo-barbearia-marco-tulio.jpeg";
 
 interface SidebarProps {
   activeTab: string;
@@ -45,8 +46,12 @@ export const Sidebar = ({ activeTab, onTabChange }: SidebarProps) => {
       {/* Logo */}
       <div className="p-5 border-b border-border/50">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center">
-            <Scissors className="w-5 h-5 text-primary-foreground" />
+          <div className="w-10 h-10 rounded-lg overflow-hidden bg-primary flex items-center justify-center">
+            <img
+              src={logoBarbearia}
+              alt="Logo Barbearia Marco Túlio"
+              className="w-full h-full object-cover"
+            />
           </div>
           <div className="flex-1 min-w-0">
             <h1 className="font-display text-lg text-primary tracking-wide truncate">
