@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar, Clock, User, Scissors, Phone, Pencil, Check, ChevronDown, Repeat } from "lucide-react";
-import { format, isSameDay, isBefore, addWeeks, addMonths, addYears, startOfDay, endOfMonth, getDay } from "date-fns";
+import { format, isSameDay, isBefore, addWeeks, addMonths, addYears, startOfDay, endOfMonth, getDay, isSameWeek } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -351,7 +351,10 @@ export const AppointmentDialog = ({
         dataCursor.setDate(dataCursor.getDate() + 1);
 
         while (dataCursor <= limiteSerie) {
-          if (diasSemana.includes(getDay(dataCursor))) {
+          const mesmoDiaSemana = diasSemana.includes(getDay(dataCursor));
+          const mesmaSemanaDoPrimeiro = isSameWeek(dataCursor, dataSelecionada, { weekStartsOn: 1 });
+
+          if (mesmoDiaSemana && !mesmaSemanaDoPrimeiro) {
             datasParaAgendar.push(new Date(dataCursor));
           }
           dataCursor.setDate(dataCursor.getDate() + 1);
