@@ -316,10 +316,16 @@ export const AppointmentDialog = ({
       if (tipoRecorrencia === "unico") {
         datasParaAgendar.push(dataSelecionada);
       } else if (tipoRecorrencia === "semanal") {
+        const diasSemana = diasSemanaSelecionados.length > 0
+          ? diasSemanaSelecionados
+          : [getDay(dataSelecionada)];
+
         let dataCursor = new Date(inicioSerie);
         while (dataCursor <= limiteSerie) {
-          datasParaAgendar.push(new Date(dataCursor));
-          dataCursor = addWeeks(dataCursor, 1);
+          if (diasSemana.includes(getDay(dataCursor))) {
+            datasParaAgendar.push(new Date(dataCursor));
+          }
+          dataCursor.setDate(dataCursor.getDate() + 1);
         }
       } else if (tipoRecorrencia === "mensal") {
         // Usa dias da semana em vez de dias do mês
@@ -713,47 +719,60 @@ export const AppointmentDialog = ({
                       </div>
                     )}
 
-                    {tipoRecorrencia === "mensal" && (
-                      <div className="space-y-2 mt-1">
-                        <Label className="text-xs text-foreground">
-                          Dias da semana
-                        </Label>
-                        <div className="grid grid-cols-4 gap-2">
-                          {[
-                            { label: "Seg", value: 1 },
-                            { label: "Ter", value: 2 },
-                            { label: "Qua", value: 3 },
-                            { label: "Qui", value: 4 },
-                            { label: "Sex", value: 5 },
-                            { label: "Sáb", value: 6 },
-                            { label: "Dom", value: 0 },
-                          ].map(({ label, value }) => (
-                            <button
-                              key={value}
-                              type="button"
-                              onClick={() => {
-                                setDiasSemanaSelecionados((prev) =>
-                                  prev.includes(value)
-                                    ? prev.filter((d) => d !== value)
-                                    : [...prev, value].sort()
-                                );
-                              }}
-                              className={cn(
-                                "py-1.5 px-2 rounded-md text-xs font-medium transition-all",
-                                diasSemanaSelecionados.includes(value)
-                                  ? "bg-primary text-primary-foreground"
-                                  : "bg-secondary/50 text-muted-foreground hover:bg-secondary"
-                              )}
-                            >
-                              {label}
-                            </button>
-                          ))}
-                        </div>
-                        <p className="text-[10px] text-muted-foreground">
-                          Deixe vazio para usar o dia da semana selecionado. Serão criados horários em todos esses dias da semana nos próximos 12 meses.
-                        </p>
-                      </div>
-                    )}
+                     {tipoRecorrencia === "semanal" && (
++                      <div className="space-y-2 mt-1">
++                        <Label className="text-xs text-foreground">
++                          Dias da semana
++                        </Label>
++                        <div className="grid grid-cols-4 gap-2">
++                          {[
++                            { label: "Seg", value: 1 },
++                            { label: "Ter", value: 2 },
++                            { label: "Qua", value: 3 },
++                            { label: "Qui", value: 4 },
++                            { label: "Sex", value: 5 },
++                            { label: "Sáb", value: 6 },
++                            { label: "Dom", value: 0 },
++                          ].map(({ label, value }) => (
++                            <button
++                              key={value}
++                              type="button"
++                              onClick={() => {
++                                setDiasSemanaSelecionados((prev) =>
++                                  prev.includes(value)
++                                    ? prev.filter((d) => d !== value)
++                                    : [...prev, value].sort()
++                                );
++                              }}
++                              className={cn(
++                                "py-1.5 px-2 rounded-md text-xs font-medium transition-all",
++                                diasSemanaSelecionados.includes(value)
++                                  ? "bg-primary text-primary-foreground"
++                                  : "bg-secondary/50 text-muted-foreground hover:bg-secondary"
++                              )}
++                            >
++                              {label}
++                            </button>
++                          ))}
++                        </div>
++                        <p className="text-[10px] text-muted-foreground">
++                          Deixe vazio para usar o dia da semana selecionado. Serão criados horários nesses dias todas as semanas nos próximos 12 meses.
++                        </p>
++                      </div>
++                    )}
++
++                    {tipoRecorrencia === "mensal" && (
+                       <div className="space-y-2 mt-1">
+                         <Label className="text-xs text-foreground">
+                           Dias da semana
+@@
+                           ))}
+                         </div>
+                         <p className="text-[10px] text-muted-foreground">
+                           Deixe vazio para usar o dia da semana selecionado. Serão criados horários em todos esses dias da semana nos próximos 12 meses.
+                         </p>
+                       </div>
+                     )}
                   </div>
                 )}
               </div>
