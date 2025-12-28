@@ -46,11 +46,11 @@ export const Sidebar = ({ activeTab, onTabChange }: SidebarProps) => {
       {/* Logo */}
       <div className="p-5 border-b border-border/50">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg overflow-hidden bg-primary flex items-center justify-center">
+          <div className="w-16 h-12 rounded-lg overflow-hidden bg-primary/10 flex items-center justify-center">
             <img
               src={logoBarbearia}
               alt="Logo Barbearia Marco Túlio"
-              className="w-full h-full object-cover"
+              className="w-full h-full object-contain"
             />
           </div>
           <div className="flex-1 min-w-0">
