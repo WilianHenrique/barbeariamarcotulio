@@ -276,6 +276,12 @@ export const RelatorioGeral = ({ agendamentos }: RelatorioGeralProps) => {
                   </BarChart>
                 </ResponsiveContainer>
               </ChartContainer>
+              
+              <div className="bg-primary/5 border border-primary/20 p-4 rounded-lg">
+                <p className="text-xs text-muted-foreground">
+                  💡 <strong>Dica:</strong> Os valores são calculados automaticamente usando o preço de fidelidade para agendamentos recorrentes e o preço normal para agendamentos avulsos.
+                </p>
+              </div>
             </div>
           )}
         </CardContent>
