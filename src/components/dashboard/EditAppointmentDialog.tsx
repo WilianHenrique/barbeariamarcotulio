@@ -71,6 +71,8 @@ export const EditAppointmentDialog = ({
   const [tempoServico, setTempoServico] = useState(30);
   const [dataSelecionada, setDataSelecionada] = useState<Date>(new Date());
   const [horarioSelecionado, setHorarioSelecionado] = useState<string>("");
+  const [horarioManual, setHorarioManual] = useState("");
+  const [erroHorarioManual, setErroHorarioManual] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [showConfirmDelete, setShowConfirmDelete] = useState(false);
 
@@ -82,6 +84,8 @@ export const EditAppointmentDialog = ({
       setTempoServico(agendamento.tempo_total_minutos);
       setDataSelecionada(new Date(agendamento.dia_agendado + 'T12:00:00'));
       setHorarioSelecionado(agendamento.hora_agendada);
+      setHorarioManual(agendamento.hora_agendada);
+      setErroHorarioManual("");
       setShowConfirmDelete(false);
     }
   }, [agendamento, open]);
@@ -89,7 +93,7 @@ export const EditAppointmentDialog = ({
   const gerarHorariosDisponiveis = () => {
     const horarios: string[] = [];
     for (let hora = 8; hora < 20; hora++) {
-      for (let minuto = 0; minuto < 60; minuto += 30) {
+      for (let minuto = 0; minuto < 60; minuto += 15) {
         horarios.push(`${hora.toString().padStart(2, '0')}:${minuto.toString().padStart(2, '0')}`);
       }
     }
@@ -124,6 +128,45 @@ export const EditAppointmentDialog = ({
     const dataHorario = new Date(dataSelecionada);
     dataHorario.setHours(hora, minuto, 0, 0);
     return isBefore(dataHorario, new Date());
+  };
+
+  const validarHorarioManual = (horario: string) => {
+    const regex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
+    return regex.test(horario);
+  };
+
+  const handleHorarioManualChange = (valor: string) => {
+    let numerosSomente = valor.replace(/\D/g, "");
+
+    if (numerosSomente.length > 4) {
+      numerosSomente = numerosSomente.slice(0, 4);
+    }
+
+    let horarioFormatado = "";
+    if (numerosSomente.length >= 1) {
+      horarioFormatado = numerosSomente.slice(0, 2);
+      if (numerosSomente.length > 2) {
+        horarioFormatado += ":" + numerosSomente.slice(2, 4);
+      }
+    }
+
+    setHorarioManual(horarioFormatado);
+    setErroHorarioManual("");
+
+    if (horarioFormatado.length === 5 && validarHorarioManual(horarioFormatado)) {
+      const ocupado = isHorarioOcupado(horarioFormatado);
+      const passado = isHorarioPassado(horarioFormatado);
+
+      if (ocupado) {
+        setErroHorarioManual("Este horário já está ocupado");
+      } else if (passado) {
+        setErroHorarioManual("Este horário já passou");
+      } else {
+        setHorarioSelecionado(horarioFormatado);
+      }
+    } else if (horarioFormatado.length === 5) {
+      setErroHorarioManual("Horário inválido");
+    }
   };
 
   const handleSave = async () => {
@@ -222,7 +265,6 @@ export const EditAppointmentDialog = ({
                 value={nomeCliente}
                 onChange={(e) => setNomeCliente(e.target.value)}
                 className="input-refined"
-                disabled={isPastAppointment}
               />
             </div>
 
@@ -236,7 +278,6 @@ export const EditAppointmentDialog = ({
                 onChange={(e) => setTelefoneCliente(formatarTelefone(e.target.value))}
                 placeholder="(00) 0 0000-0000"
                 className="input-refined"
-                disabled={isPastAppointment}
               />
             </div>
           </div>
@@ -252,18 +293,14 @@ export const EditAppointmentDialog = ({
                 <button
                   key={s.id}
                   onClick={() => { 
-                    if (!isPastAppointment) {
-                      setServico(s.nome); 
-                      setTempoServico(s.tempo); 
-                    }
+                    setServico(s.nome); 
+                    setTempoServico(s.tempo); 
                   }}
-                  disabled={isPastAppointment}
                   className={cn(
                     "p-2 rounded-lg border text-left transition-all text-sm",
                     servico === s.nome
                       ? "border-primary bg-primary/10 text-foreground"
-                      : "border-border bg-secondary/30 text-muted-foreground hover:border-border hover:bg-secondary/50",
-                    isPastAppointment && "opacity-60 cursor-not-allowed"
+                      : "border-border bg-secondary/30 text-muted-foreground hover:border-border hover:bg-secondary/50"
                   )}
                 >
                   <span className="font-medium block text-xs">{s.nome}</span>
@@ -277,7 +314,6 @@ export const EditAppointmentDialog = ({
               onChange={(e) => setServico(e.target.value)}
               placeholder="Ou digite um serviço personalizado..."
               className="input-refined mt-2"
-              disabled={isPastAppointment}
             />
           </div>
 
@@ -305,7 +341,6 @@ export const EditAppointmentDialog = ({
                 <Button 
                   variant="outline" 
                   className="w-full justify-between font-normal"
-                  disabled={isPastAppointment}
                 >
                   {format(dataSelecionada, "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
                   <ChevronDown className="h-4 w-4 opacity-50" />
@@ -335,16 +370,27 @@ export const EditAppointmentDialog = ({
               <Clock className="h-4 w-4 text-primary" />
               Horário
             </Label>
+
+            <Input
+              value={horarioManual}
+              onChange={(e) => handleHorarioManualChange(e.target.value)}
+              placeholder="Digite o horário (ex: 17:15)"
+              className="input-refined"
+            />
+            {erroHorarioManual && (
+              <p className="text-xs text-destructive mt-1">{erroHorarioManual}</p>
+            )}
+
             <div className="grid grid-cols-4 gap-2 max-h-40 overflow-y-auto custom-scrollbar p-1">
               {horarios.map((horario) => {
                 const ocupado = isHorarioOcupado(horario);
                 const passado = isHorarioPassado(horario);
-                const disabled = ocupado || passado || isPastAppointment;
+                const disabled = ocupado || passado;
 
                 return (
                   <button
                     key={horario}
-                    onClick={() => !disabled && setHorarioSelecionado(horario)}
+                    onClick={() => !disabled && (setHorarioSelecionado(horario), setHorarioManual(horario), setErroHorarioManual(""))}
                     disabled={disabled}
                     className={cn(
                       "py-2 px-3 rounded-md text-sm font-medium transition-all",
@@ -365,7 +411,7 @@ export const EditAppointmentDialog = ({
           {/* Aviso de agendamento passado */}
           {isPastAppointment && (
             <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-3 text-sm text-amber-500">
-              Este agendamento já passou e não pode ser editado.
+              Este agendamento já passou. Você pode editar, mas atenção para não alterar dados históricos sem necessidade.
             </div>
           )}
 
