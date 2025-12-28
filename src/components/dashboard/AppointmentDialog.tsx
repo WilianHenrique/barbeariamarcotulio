@@ -331,14 +331,25 @@ export const AppointmentDialog = ({
       const inicioSerie = startOfDay(dataSelecionada);
       const limiteSerie = addYears(inicioSerie, 1);
 
-      console.log("criarAgendamento - tipoRecorrencia:", tipoRecorrencia, "diasSemanaSelecionados:", diasSemanaSelecionados, "dataSelecionada weekday:", getDay(dataSelecionada));
+      // Sempre adiciona o primeiro agendamento exatamente na data selecionada
+      datasParaAgendar.push(new Date(dataSelecionada));
 
-      if (tipoRecorrencia === "unico") {
-        datasParaAgendar.push(dataSelecionada);
-      } else if (tipoRecorrencia === "semanal") {
+      console.log(
+        "criarAgendamento - tipoRecorrencia:",
+        tipoRecorrencia,
+        "diasSemanaSelecionados:",
+        diasSemanaSelecionados,
+        "dataSelecionada weekday:",
+        getDay(dataSelecionada),
+      );
+
+      if (tipoRecorrencia === "semanal") {
         const diasSemana = diasSemanaSelecionados;
 
+        // Começa a partir do dia seguinte ao primeiro agendamento
         let dataCursor = new Date(inicioSerie);
+        dataCursor.setDate(dataCursor.getDate() + 1);
+
         while (dataCursor <= limiteSerie) {
           if (diasSemana.includes(getDay(dataCursor))) {
             datasParaAgendar.push(new Date(dataCursor));
@@ -349,6 +360,7 @@ export const AppointmentDialog = ({
         const diasSemana = diasSemanaSelecionados;
 
         let dataMesBase = new Date(inicioSerie);
+
         while (dataMesBase <= limiteSerie) {
           diasSemana.forEach((diaSemana) => {
             const primeiroDiaMes = new Date(
@@ -358,11 +370,13 @@ export const AppointmentDialog = ({
             );
 
             let diaAtual = new Date(primeiroDiaMes);
+            // Avança até o primeiro dia do mês que bate com o dia da semana escolhido
             while (getDay(diaAtual) !== diaSemana) {
               diaAtual.setDate(diaAtual.getDate() + 1);
             }
 
             while (diaAtual.getMonth() === dataMesBase.getMonth() && diaAtual <= limiteSerie) {
+              // Só adiciona datas iguais ou posteriores ao primeiro agendamento
               if (diaAtual >= inicioSerie) {
                 datasParaAgendar.push(new Date(diaAtual));
               }
@@ -372,8 +386,10 @@ export const AppointmentDialog = ({
 
           dataMesBase = addMonths(dataMesBase, 1);
         }
-      } else {
+      } else if (tipoRecorrencia === "personalizado") {
         let dataCursor = new Date(inicioSerie);
+        dataCursor = addWeeks(dataCursor, recorrenciaPersonalizada);
+
         while (dataCursor <= limiteSerie) {
           datasParaAgendar.push(new Date(dataCursor));
           dataCursor = addWeeks(dataCursor, recorrenciaPersonalizada);
