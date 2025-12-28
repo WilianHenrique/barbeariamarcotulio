@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Copy, Check, ArrowLeft, Bell, Save } from "lucide-react";
+import { ArrowLeft, Bell, Save } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { GerenciadorServicos } from "@/components/dashboard/GerenciadorServicos";
@@ -11,13 +11,10 @@ import { supabase } from "@/integrations/supabase/client";
 
 const Settings = () => {
   const navigate = useNavigate();
-  const [copiedWebhook, setCopiedWebhook] = useState(false);
   const [notificationUrl, setNotificationUrl] = useState("");
   const [originalNotificationUrl, setOriginalNotificationUrl] = useState("");
   const [loadingNotificationUrl, setLoadingNotificationUrl] = useState(true);
   const [savingNotificationUrl, setSavingNotificationUrl] = useState(false);
-
-  const webhookUrl = "https://dimwyqenkirksoatesdq.supabase.co/functions/v1/webhook-agendamentos";
 
   useEffect(() => {
     loadNotificationUrl();
@@ -91,13 +88,6 @@ const Settings = () => {
     }
   };
 
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
-    setCopiedWebhook(true);
-    setTimeout(() => setCopiedWebhook(false), 2000);
-    toast.success("URL copiada para a área de transferência!");
-  };
-
   const hasChanges = notificationUrl !== originalNotificationUrl;
 
   return (
@@ -123,74 +113,6 @@ const Settings = () => {
 
         {/* Gerenciamento de Serviços */}
         <GerenciadorServicos />
-
-        {/* Webhook de Recepção */}
-        <Card className="barber-card border-primary/20">
-          <CardHeader className="border-b border-primary/10">
-            <CardTitle className="text-xl font-display text-primary">Endpoint de Recepção (N8N)</CardTitle>
-            <CardDescription className="text-muted-foreground">
-              Use esta URL no seu fluxo N8N para enviar os dados dos agendamentos
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4 pt-6">
-            <div className="space-y-2">
-              <Label htmlFor="webhook-url" className="text-foreground">URL do Webhook</Label>
-              <div className="flex gap-2">
-                <Input
-                  id="webhook-url"
-                  value={webhookUrl}
-                  readOnly
-                  className="font-mono text-sm bg-secondary border-primary/20"
-                />
-                <Button
-                  size="icon"
-                  variant="outline"
-                  onClick={() => copyToClipboard(webhookUrl)}
-                  className="shrink-0 border-primary/30 hover:bg-primary/10 hover:border-primary/50"
-                >
-                  {copiedWebhook ? (
-                    <Check className="h-4 w-4 text-primary" />
-                  ) : (
-                    <Copy className="h-4 w-4" />
-                  )}
-                </Button>
-              </div>
-            </div>
-
-            <div className="bg-secondary/50 border border-primary/20 p-4 rounded-lg space-y-2">
-              <p className="text-sm font-semibold text-primary">Configuração no N8N:</p>
-              <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
-                <li>Método: <strong className="text-foreground">POST</strong></li>
-                <li>Content-Type: <strong className="text-foreground">application/json</strong></li>
-                <li>Autenticação: <strong className="text-foreground">Não é necessária</strong></li>
-                <li>Envie os dados no formato especificado na documentação</li>
-              </ul>
-            </div>
-
-            <div className="bg-primary/5 border border-primary/30 p-4 rounded-lg">
-              <p className="text-sm font-semibold text-primary mb-2">📋 Formato esperado:</p>
-              <pre className="text-xs bg-background p-3 rounded border border-primary/20 overflow-x-auto text-foreground">
-{`[
-  {
-    "id_evento": "abc123",
-    "Nome_cliente": "João Silva",
-    "dateTime-start": "2025-11-15T14:00:00-03:00",
-    "dateTime-end": "2025-11-15T15:00:00-03:00",
-    "Dia_agendado_formatado": "15/11/2025",
-    "Dia_agendado": "2025-11-15",
-    "Hora_agendada": "14:00",
-    "Hora_final": "15:00",
-    "Link_evento": "https://...",
-    "servico": "cabelo + barba",
-    "tempo_total_minutos": "60",
-    "Status_Evento": "Evento criado",
-    "EventoRecorrente": "Não"
-  }
-]`}
-              </pre>
-            </div>
-          </CardContent>
-        </Card>
 
         {/* Informação sobre Notificações Automáticas */}
         <Card className="barber-card border-primary/20">
