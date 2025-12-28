@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar, Clock, User, Scissors, Phone, Pencil, Check, ChevronDown, Plus, Repeat } from "lucide-react";
-import { format, isSameDay, isBefore, addWeeks, addMonths, addYears, startOfDay, endOfMonth } from "date-fns";
+import { format, isSameDay, isBefore, addWeeks, addMonths, addYears, startOfDay, endOfMonth, getDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -82,8 +82,7 @@ export const AppointmentDialog = ({
   const [erroHorarioManual, setErroHorarioManual] = useState("");
   const [tipoRecorrencia, setTipoRecorrencia] = useState<RecorrenciaType>("unico");
   const [recorrenciaPersonalizada, setRecorrenciaPersonalizada] = useState(2);
-  const [diasMesRecorrentes, setDiasMesRecorrentes] = useState<number[]>([]);
-  const [diasMesTexto, setDiasMesTexto] = useState("");
+  const [diasSemanaSelecionados, setDiasSemanaSelecionados] = useState<number[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [carregandoServicos, setCarregandoServicos] = useState(false);
   const sugestoesRef = useRef<HTMLDivElement>(null);
@@ -134,8 +133,7 @@ export const AppointmentDialog = ({
       setDataSelecionada(new Date());
       setTipoRecorrencia("unico");
       setRecorrenciaPersonalizada(2);
-      setDiasMesRecorrentes([]);
-      setDiasMesTexto("");
+      setDiasSemanaSelecionados([]);
     }
   }, [open]);
 
@@ -324,19 +322,29 @@ export const AppointmentDialog = ({
           dataCursor = addWeeks(dataCursor, 1);
         }
       } else if (tipoRecorrencia === "mensal") {
-        const diaBase = dataSelecionada.getDate();
-        const diasDoMes = diasMesRecorrentes.length > 0 ? diasMesRecorrentes : [diaBase];
+        // Usa dias da semana em vez de dias do mês
+        const diaSemanaSelecionada = getDay(dataSelecionada);
+        const diasSemana = diasSemanaSelecionados.length > 0 ? diasSemanaSelecionados : [diaSemanaSelecionada];
 
         let dataMesBase = new Date(inicioSerie);
         while (dataMesBase <= limiteSerie) {
-          const ultimoDiaMes = endOfMonth(dataMesBase).getDate();
-
-          diasDoMes.forEach((dia) => {
-            const diaValido = Math.min(Math.max(dia, 1), ultimoDiaMes);
-            const dataMes = new Date(dataMesBase);
-            dataMes.setDate(diaValido);
-            if (dataMes >= inicioSerie && dataMes <= limiteSerie) {
-              datasParaAgendar.push(dataMes);
+          // Para cada dia da semana selecionado, encontra todas as ocorrências no mês
+          diasSemana.forEach((diaSemana) => {
+            // Começa no primeiro dia do mês
+            const primeiroDiaMes = new Date(dataMesBase.getFullYear(), dataMesBase.getMonth(), 1);
+            
+            // Encontra o primeiro dia do mês que corresponde ao dia da semana desejado
+            let diaAtual = new Date(primeiroDiaMes);
+            while (getDay(diaAtual) !== diaSemana) {
+              diaAtual.setDate(diaAtual.getDate() + 1);
+            }
+            
+            // Adiciona todas as ocorrências desse dia da semana no mês
+            while (diaAtual.getMonth() === dataMesBase.getMonth() && diaAtual <= limiteSerie) {
+              if (diaAtual >= inicioSerie) {
+                datasParaAgendar.push(new Date(diaAtual));
+              }
+              diaAtual.setDate(diaAtual.getDate() + 7); // Próxima semana
             }
           });
 
@@ -674,7 +682,7 @@ export const AppointmentDialog = ({
                         variant={tipoRecorrencia === "mensal" ? "default" : "outline"}
                         onClick={() => setTipoRecorrencia("mensal")}
                       >
-                        Mensal (dias fixos)
+                        Mensal (dias da semana)
                       </Button>
                       <Button
                         type="button"
@@ -706,30 +714,44 @@ export const AppointmentDialog = ({
                     )}
 
                     {tipoRecorrencia === "mensal" && (
-                      <div className="space-y-1 mt-1">
+                      <div className="space-y-2 mt-1">
                         <Label className="text-xs text-foreground">
-                          Dias do mês (ex: 1, 15)
+                          Dias da semana
                         </Label>
-                        <Input
-                          value={diasMesTexto}
-                          onChange={(e) => {
-                            const texto = e.target.value;
-                            setDiasMesTexto(texto);
-                            const numeros = texto
-                              .split(",")
-                              .map((t) => t.trim())
-                              .filter((t) => t !== "")
-                              .map((t) => Number(t))
-                              .filter((n) => Number.isFinite(n) && n >= 1 && n <= 31);
-                            const unicos = Array.from(new Set(numeros));
-                            setDiasMesRecorrentes(unicos);
-                          }}
-                          placeholder="Deixe vazio para usar o dia selecionado"
-                          className="bg-secondary/50 border-border focus:border-primary text-xs"
-                        />
+                        <div className="grid grid-cols-4 gap-2">
+                          {[
+                            { label: "Seg", value: 1 },
+                            { label: "Ter", value: 2 },
+                            { label: "Qua", value: 3 },
+                            { label: "Qui", value: 4 },
+                            { label: "Sex", value: 5 },
+                            { label: "Sáb", value: 6 },
+                            { label: "Dom", value: 0 },
+                          ].map(({ label, value }) => (
+                            <button
+                              key={value}
+                              type="button"
+                              onClick={() => {
+                                setDiasSemanaSelecionados((prev) =>
+                                  prev.includes(value)
+                                    ? prev.filter((d) => d !== value)
+                                    : [...prev, value].sort()
+                                );
+                              }}
+                              className={cn(
+                                "py-1.5 px-2 rounded-md text-xs font-medium transition-all",
+                                diasSemanaSelecionados.includes(value)
+                                  ? "bg-primary text-primary-foreground"
+                                  : "bg-secondary/50 text-muted-foreground hover:bg-secondary"
+                              )}
+                            >
+                              {label}
+                            </button>
+                          ))}
+                        </div>
                         <p className="text-[10px] text-muted-foreground">
-                           Serão criados horários nesses dias nos próximos 12 meses.
-                         </p>
+                          Deixe vazio para usar o dia da semana selecionado. Serão criados horários em todos esses dias da semana nos próximos 12 meses.
+                        </p>
                       </div>
                     )}
                   </div>
