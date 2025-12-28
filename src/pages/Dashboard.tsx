@@ -171,9 +171,7 @@ const Dashboard = () => {
       dataEvento < agora &&
       dataEvento.getDate() === agora.getDate() &&
       dataEvento.getMonth() === agora.getMonth() &&
-      dataEvento.getFullYear() === agora.getFullYear() &&
-      a.notificacao_24h_enviada &&
-      a.notificacao_1h_enviada
+      dataEvento.getFullYear() === agora.getFullYear()
     );
   });
 
