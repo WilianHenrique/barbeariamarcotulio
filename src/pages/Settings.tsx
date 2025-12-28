@@ -205,7 +205,7 @@ const Settings = () => {
               <div className="bg-primary/5 border border-primary/30 p-4 rounded-lg">
                 <p className="text-sm font-semibold text-primary mb-2">✅ Configuração Automática Ativada</p>
                 <ul className="text-sm text-foreground space-y-1 list-disc list-inside">
-                  <li>O sistema verifica automaticamente os agendamentos a cada 10 minutos</li>
+                  <li>O sistema verifica automaticamente os agendamentos a cada 1 minuto</li>
                   <li>Notificações são enviadas automaticamente 24 horas antes do horário agendado</li>
                   <li>Notificações são enviadas automaticamente 1 hora antes do horário agendado</li>
                   <li>Não é necessário configurar nada manualmente - tudo funciona automaticamente!</li>
