@@ -69,7 +69,7 @@ export const QuickStats = ({ totalPendentes, proximas24h, realizados, totalMes }
         variant="warning"
       />
       <StatCard 
-        label="Realizados" 
+        label="Realizados hoje" 
         value={realizados} 
         icon={CheckCircle2}
         variant="success"

@@ -165,7 +165,17 @@ const Dashboard = () => {
     .filter((a): a is Agendamento => a !== null)
     .sort((a, b) => new Date(a.datetime_start).getTime() - new Date(b.datetime_start).getTime());
 
-  const agendamentosRealizados = agendamentosFiltrados.filter(a => a.notificacao_24h_enviada && a.notificacao_1h_enviada);
+  const agendamentosRealizadosHoje = agendamentosFiltrados.filter(a => {
+    const dataEvento = new Date(a.datetime_start);
+    return (
+      dataEvento < agora &&
+      dataEvento.getDate() === agora.getDate() &&
+      dataEvento.getMonth() === agora.getMonth() &&
+      dataEvento.getFullYear() === agora.getFullYear() &&
+      a.notificacao_24h_enviada &&
+      a.notificacao_1h_enviada
+    );
+  });
 
   // Métricas
   const totalMes = agendamentos.filter(a => {
@@ -217,7 +227,7 @@ const Dashboard = () => {
           <QuickStats 
             totalPendentes={agendamentosPendentes.length}
             proximas24h={proximas24h}
-            realizados={agendamentosRealizados.length}
+            realizados={agendamentosRealizadosHoje.length}
             totalMes={totalMes}
           />
 
