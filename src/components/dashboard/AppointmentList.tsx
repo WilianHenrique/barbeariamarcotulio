@@ -280,7 +280,10 @@ export const AppointmentList = ({
                   <Button
                     variant="ghost"
                     size="icon"
-                    onClick={() => onDelete(ag.id, ag.nome_cliente)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onDelete(ag.id, ag.nome_cliente);
+                    }}
                     className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
                   >
                     <Trash2 className="w-4 h-4" />
