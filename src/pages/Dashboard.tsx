@@ -182,9 +182,14 @@ const Dashboard = () => {
     return data.getMonth() === now.getMonth() && data.getFullYear() === now.getFullYear();
   }).length;
 
-  const proximas24h = agendamentosPendentes.filter(a => {
-    const diff = new Date(a.datetime_start).getTime() - Date.now();
-    return diff > 0 && diff < 24 * 60 * 60 * 1000;
+  const pendentesHoje = agendamentosPendentes.filter(a => {
+    const dataEvento = new Date(a.datetime_start);
+    const hoje = new Date();
+    return (
+      dataEvento.getDate() === hoje.getDate() &&
+      dataEvento.getMonth() === hoje.getMonth() &&
+      dataEvento.getFullYear() === hoje.getFullYear()
+    );
   }).length;
 
   return (
@@ -224,7 +229,7 @@ const Dashboard = () => {
           {/* Quick Stats */}
           <QuickStats 
             totalPendentes={agendamentosPendentes.length}
-            proximas24h={proximas24h}
+            proximas24h={pendentesHoje}
             realizados={agendamentosRealizadosHoje.length}
             totalMes={totalMes}
           />
