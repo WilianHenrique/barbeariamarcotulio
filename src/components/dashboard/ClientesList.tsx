@@ -5,12 +5,23 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { Search, User, Phone, Calendar, Edit, ChevronRight, MessageSquare, Clock } from "lucide-react";
+import { Search, User, Phone, Calendar, Edit, ChevronRight, MessageSquare, Clock, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { format, isSameWeek, isSameMonth, isSameYear } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { EditAppointmentDialog } from "./EditAppointmentDialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 interface Agendamento {
   id: string;
@@ -231,6 +242,27 @@ export const ClientesList = ({ agendamentos, onRefresh }: ClientesListProps) => 
     }
   };
 
+  const handleDeleteCliente = async () => {
+    if (!selectedCliente) return;
+
+    try {
+      const { error } = await supabase
+        .from("agendamentos")
+        .delete()
+        .ilike("nome_cliente", selectedCliente.nome);
+
+      if (error) throw error;
+
+      toast.success(`Cliente ${selectedCliente.nome} e seus agendamentos foram removidos.`);
+      setShowDetails(false);
+      setSelectedCliente(null);
+      onRefresh();
+    } catch (error) {
+      console.error("Erro ao excluir cliente:", error);
+      toast.error("Erro ao excluir cliente");
+    }
+  };
+
   return (
     <div className="space-y-4">
       {/* Header com busca */}
@@ -303,15 +335,39 @@ export const ClientesList = ({ agendamentos, onRefresh }: ClientesListProps) => 
       <Dialog open={showDetails} onOpenChange={setShowDetails}>
         <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="flex items-center justify-between">
+            <DialogTitle className="flex items-center justify-between gap-2">
               <span className="flex items-center gap-2">
                 <User className="w-5 h-5 text-primary" />
                 {selectedCliente?.nome}
               </span>
-              <Button variant="outline" size="sm" onClick={handleOpenEdit}>
-                <Edit className="w-4 h-4 mr-1" />
-                Editar
-              </Button>
+              <div className="flex items-center gap-2">
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="outline" size="sm" className="text-destructive border-destructive/40 hover:bg-destructive/10">
+                      <Trash2 className="w-4 h-4 mr-1" />
+                      Apagar cliente
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Apagar cliente</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Isso irá remover todos os agendamentos deste cliente. Essa ação não pode ser desfeita.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                      <AlertDialogAction onClick={handleDeleteCliente} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                        Confirmar exclusão
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+                <Button variant="outline" size="sm" onClick={handleOpenEdit}>
+                  <Edit className="w-4 h-4 mr-1" />
+                  Editar
+                </Button>
+              </div>
             </DialogTitle>
           </DialogHeader>
 
