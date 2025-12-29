@@ -27,6 +27,7 @@ const navItems = [
   { id: "agenda", label: "Agenda", icon: Calendar },
   { id: "pendentes", label: "Pendentes", icon: Clock },
   { id: "mensagens", label: "Mensagens", icon: MessageSquare },
+  { id: "pagamentos", label: "Pagamentos", icon: Calendar },
   { id: "clientes", label: "Clientes", icon: Users },
   { id: "relatorios", label: "Relatórios", icon: BarChart3 },
 ];
