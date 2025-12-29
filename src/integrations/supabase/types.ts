@@ -26,16 +26,19 @@ export type Database = {
           hora_final: string
           id: string
           id_evento: string
+          lembrete_pagamento_enviado: boolean
           link_evento: string
           nome_cliente: string
           notificacao_1h_enviada: boolean | null
           notificacao_24h_enviada: boolean | null
+          pagamento_pendente: boolean
           servico: string
           status_evento: string
           telefone_cliente: string | null
           tempo_total_minutos: number
           updated_at: string
           user_id: string | null
+          valor_servico: number | null
         }
         Insert: {
           created_at?: string
@@ -48,16 +51,19 @@ export type Database = {
           hora_final: string
           id?: string
           id_evento: string
+          lembrete_pagamento_enviado?: boolean
           link_evento: string
           nome_cliente: string
           notificacao_1h_enviada?: boolean | null
           notificacao_24h_enviada?: boolean | null
+          pagamento_pendente?: boolean
           servico: string
           status_evento: string
           telefone_cliente?: string | null
           tempo_total_minutos: number
           updated_at?: string
           user_id?: string | null
+          valor_servico?: number | null
         }
         Update: {
           created_at?: string
@@ -70,16 +76,19 @@ export type Database = {
           hora_final?: string
           id?: string
           id_evento?: string
+          lembrete_pagamento_enviado?: boolean
           link_evento?: string
           nome_cliente?: string
           notificacao_1h_enviada?: boolean | null
           notificacao_24h_enviada?: boolean | null
+          pagamento_pendente?: boolean
           servico?: string
           status_evento?: string
           telefone_cliente?: string | null
           tempo_total_minutos?: number
           updated_at?: string
           user_id?: string | null
+          valor_servico?: number | null
         }
         Relationships: []
       }

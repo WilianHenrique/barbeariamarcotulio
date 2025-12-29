@@ -12,6 +12,7 @@ import { AppointmentList } from "@/components/dashboard/AppointmentList";
 import { MensagensAgendadas } from "@/components/dashboard/MensagensAgendadas";
 import { RelatorioGeral } from "@/components/dashboard/RelatorioGeral";
 import { ClientesList } from "@/components/dashboard/ClientesList";
+import { PagamentosClientes } from "@/components/dashboard/PagamentosClientes";
 import { Input } from "@/components/ui/input";
 import { Search, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -206,6 +207,7 @@ const Dashboard = () => {
                 {activeTab === "agenda" && "Agenda"}
                 {activeTab === "pendentes" && "Agendamentos Pendentes"}
                 {activeTab === "mensagens" && "Mensagens"}
+                {activeTab === "pagamentos" && "Pagamentos"}
                 {activeTab === "clientes" && "Clientes"}
                 {activeTab === "relatorios" && "Relatórios"}
               </h1>
@@ -213,6 +215,7 @@ const Dashboard = () => {
                 {activeTab === "agenda" && "Visualize e gerencie seus agendamentos"}
                 {activeTab === "pendentes" && "Agendamentos que aguardam confirmação"}
                 {activeTab === "mensagens" && "Configure suas mensagens de notificação"}
+                {activeTab === "pagamentos" && "Controle de pagamentos e lembretes automáticos"}
                 {activeTab === "clientes" && "Gerencie sua lista de clientes"}
                 {activeTab === "relatorios" && "Acompanhe o desempenho da barbearia"}
               </p>
@@ -281,6 +284,10 @@ const Dashboard = () => {
 
           {activeTab === "mensagens" && (
             <MensagensAgendadas />
+          )}
+
+          {activeTab === "pagamentos" && (
+            <PagamentosClientes />
           )}
 
           {activeTab === "clientes" && (

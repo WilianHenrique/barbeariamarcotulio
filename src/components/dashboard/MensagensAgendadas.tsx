@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
@@ -26,8 +27,11 @@ export const MensagensAgendadas = () => {
 
   const [mensagem24h, setMensagem24h] = useState("");
   const [mensagem1h, setMensagem1h] = useState("");
+  const [mensagemPagamento, setMensagemPagamento] = useState("");
   const [ativa24h, setAtiva24h] = useState(true);
   const [ativa1h, setAtiva1h] = useState(true);
+  const [ativaPagamento, setAtivaPagamento] = useState(true);
+  const [horasLembretePagamento, setHorasLembretePagamento] = useState("24");
 
   useEffect(() => {
     loadTemplates();
@@ -51,6 +55,7 @@ export const MensagensAgendadas = () => {
         // Buscar o template mais recente de cada tipo
         const template24h = data.find(t => t.tipo === "24h");
         const template1h = data.find(t => t.tipo === "1h");
+        const templatePagamento = data.find(t => t.tipo === "lembrete_pagamento");
         
         if (template24h) {
           setMensagem24h(template24h.mensagem);
@@ -60,6 +65,22 @@ export const MensagensAgendadas = () => {
           setMensagem1h(template1h.mensagem);
           setAtiva1h(template1h.ativo);
         }
+        if (templatePagamento) {
+          setMensagemPagamento(templatePagamento.mensagem);
+          setAtivaPagamento(templatePagamento.ativo);
+        }
+      }
+
+      // Carregar configuração de horas do lembrete de pagamento
+      const { data: configData } = await supabase
+        .from('configuracoes')
+        .select('valor')
+        .eq('user_id', user.id)
+        .eq('chave', 'horas_lembrete_pagamento')
+        .maybeSingle();
+      
+      if (configData) {
+        setHorasLembretePagamento(configData.valor);
       }
     } catch (error) {
       console.error("Erro ao carregar templates:", error);
@@ -175,9 +196,23 @@ export const MensagensAgendadas = () => {
         .insert([
           { tipo: "24h", mensagem: mensagem24h, ativo: ativa24h, user_id: user.id },
           { tipo: "1h", mensagem: mensagem1h, ativo: ativa1h, user_id: user.id },
+          { tipo: "lembrete_pagamento", mensagem: mensagemPagamento, ativo: ativaPagamento, user_id: user.id },
         ]);
 
       if (error) throw error;
+
+      // Salvar configuração de horas do lembrete
+      const { error: configError } = await supabase
+        .from('configuracoes')
+        .upsert({
+          user_id: user.id,
+          chave: 'horas_lembrete_pagamento',
+          valor: horasLembretePagamento
+        }, {
+          onConflict: 'user_id,chave'
+        });
+
+      if (configError) throw configError;
 
       toast({
         title: "Templates salvos!",
@@ -298,6 +333,67 @@ export const MensagensAgendadas = () => {
             <p className="text-xs text-muted-foreground">
               Variáveis disponíveis: {"{hora_agendada}"}, {"{servico}"}, {"{nome_cliente}"}
             </p>
+          </div>
+
+          {/* Mensagem Lembrete de Pagamento */}
+          <div className="space-y-4 p-4 border border-border/50 rounded-lg bg-card/30">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Label htmlFor="msg-pagamento" className="text-base font-semibold">
+                  Lembrete de Pagamento
+                </Label>
+                <Badge variant="outline" className="text-xs">
+                  Personalizado
+                </Badge>
+              </div>
+              <div className="flex items-center gap-2">
+                <Label htmlFor="switch-pagamento" className="text-sm text-muted-foreground">
+                  {ativaPagamento ? "Ativa" : "Inativa"}
+                </Label>
+                <Switch
+                  id="switch-pagamento"
+                  checked={ativaPagamento}
+                  onCheckedChange={setAtivaPagamento}
+                />
+                {ativaPagamento ? (
+                  <Power className="h-4 w-4 text-green-500" />
+                ) : (
+                  <PowerOff className="h-4 w-4 text-red-500" />
+                )}
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <div className="flex items-center gap-3">
+                <Label htmlFor="horas-lembrete" className="text-sm font-medium whitespace-nowrap">
+                  Enviar após:
+                </Label>
+                <Input
+                  id="horas-lembrete"
+                  type="number"
+                  min="1"
+                  max="168"
+                  value={horasLembretePagamento}
+                  onChange={(e) => setHorasLembretePagamento(e.target.value)}
+                  className="w-20 h-9"
+                  disabled={!ativaPagamento}
+                />
+                <span className="text-sm text-muted-foreground">horas após o agendamento</span>
+              </div>
+
+              <Textarea
+                id="msg-pagamento"
+                value={mensagemPagamento}
+                onChange={(e) => setMensagemPagamento(e.target.value)}
+                placeholder="Digite a mensagem de lembrete de pagamento que será enviada após o agendamento"
+                className="min-h-[120px] bg-background/50"
+                rows={5}
+                disabled={!ativaPagamento}
+              />
+              <p className="text-xs text-muted-foreground">
+                Variáveis disponíveis: {"{hora_agendada}"}, {"{servico}"}, {"{nome_cliente}"}, {"{valor_servico}"}
+              </p>
+            </div>
           </div>
 
           <Button
