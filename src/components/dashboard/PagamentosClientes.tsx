@@ -4,7 +4,8 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Search, DollarSign, Clock, CheckCircle, AlertCircle } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Search, DollarSign, Clock, CheckCircle, AlertCircle, Filter } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { format, parse } from "date-fns";
@@ -33,6 +34,7 @@ export const PagamentosClientes = () => {
   const [clientesAgrupados, setClientesAgrupados] = useState<ClientePagamento[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
+  const [filtroStatus, setFiltroStatus] = useState<"todos" | "pendentes" | "pagos">("todos");
 
   useEffect(() => {
     loadAgendamentos();
@@ -150,12 +152,21 @@ export const PagamentosClientes = () => {
     }
   };
 
-  const clientesFiltrados = clientesAgrupados.filter((c) =>
-    c.nome.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const clientesFiltrados = clientesAgrupados.filter((c) => {
+    const matchNome = c.nome.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    if (filtroStatus === "pendentes") {
+      return matchNome && c.totalPendente > 0;
+    } else if (filtroStatus === "pagos") {
+      return matchNome && c.totalPendente === 0;
+    }
+    
+    return matchNome;
+  });
 
   const totalGeralPendente = clientesAgrupados.reduce((sum, c) => sum + c.totalPendente, 0);
   const totalClientesPendentes = clientesAgrupados.filter((c) => c.totalPendente > 0).length;
+  const totalClientesPagos = clientesAgrupados.filter((c) => c.totalPendente === 0).length;
 
   return (
     <div className="space-y-6">
@@ -198,23 +209,37 @@ export const PagamentosClientes = () => {
                 <CheckCircle className="h-6 w-6 text-green-500" />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Clientes Totais</p>
-                <p className="text-2xl font-bold text-foreground">{clientesAgrupados.length}</p>
+                <p className="text-sm text-muted-foreground">Clientes Pagos</p>
+                <p className="text-2xl font-bold text-foreground">{totalClientesPagos}</p>
               </div>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Search */}
-      <div className="relative max-w-md">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input
-          placeholder="Buscar cliente..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="input-refined pl-10"
-        />
+      {/* Search and Filter */}
+      <div className="flex flex-col sm:flex-row gap-4">
+        <div className="relative flex-1 max-w-md">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Buscar cliente..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="input-refined pl-10"
+          />
+        </div>
+
+        <Select value={filtroStatus} onValueChange={(value: any) => setFiltroStatus(value)}>
+          <SelectTrigger className="w-full sm:w-[200px]">
+            <Filter className="h-4 w-4 mr-2" />
+            <SelectValue placeholder="Filtrar por status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="todos">Todos os clientes</SelectItem>
+            <SelectItem value="pendentes">Apenas pendentes</SelectItem>
+            <SelectItem value="pagos">Apenas pagos</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       {/* Clientes List */}
@@ -259,9 +284,13 @@ export const PagamentosClientes = () => {
                         )}
                       </div>
                       
-                      {cliente.totalPendente > 0 && (
+                      {cliente.totalPendente > 0 ? (
                         <Badge variant="destructive" className="text-sm">
                           R$ {cliente.totalPendente.toFixed(2)} pendente
+                        </Badge>
+                      ) : (
+                        <Badge variant="default" className="bg-green-500 text-white text-sm">
+                          ✓ Pago
                         </Badge>
                       )}
                     </div>
@@ -277,9 +306,16 @@ export const PagamentosClientes = () => {
                           htmlFor={`pagamento-${ag.id}`}
                           className="text-sm font-medium cursor-pointer"
                         >
-                          Pagamento Pendente
+                          Marcar como pendente
                         </label>
                       </div>
+
+                      {!ag.pagamento_pendente && (
+                        <Badge variant="outline" className="gap-1 bg-green-500/10 text-green-700 border-green-300">
+                          <CheckCircle className="h-3 w-3" />
+                          Pagamento realizado
+                        </Badge>
+                      )}
 
                       {ag.pagamento_pendente && (
                         <>
