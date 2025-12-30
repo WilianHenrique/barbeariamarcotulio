@@ -21,6 +21,7 @@ export type Database = {
           datetime_start: string
           dia_agendado: string
           dia_agendado_formatado: string
+          enviar_notificacao_cobranca: boolean | null
           evento_recorrente: string
           hora_agendada: string
           hora_final: string
@@ -46,6 +47,7 @@ export type Database = {
           datetime_start: string
           dia_agendado: string
           dia_agendado_formatado: string
+          enviar_notificacao_cobranca?: boolean | null
           evento_recorrente: string
           hora_agendada: string
           hora_final: string
@@ -71,6 +73,7 @@ export type Database = {
           datetime_start?: string
           dia_agendado?: string
           dia_agendado_formatado?: string
+          enviar_notificacao_cobranca?: boolean | null
           evento_recorrente?: string
           hora_agendada?: string
           hora_final?: string
