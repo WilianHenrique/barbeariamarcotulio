@@ -177,11 +177,12 @@ export const PagamentosClientes = () => {
 
   const clientesFiltrados = clientesAgrupados.filter((c) => {
     const matchNome = c.nome.toLowerCase().includes(searchTerm.toLowerCase());
+    const agendamentoPendente = c.ultimoAgendamento.pagamento_pendente;
     
     if (filtroStatus === "pendentes") {
-      return matchNome && c.totalPendente > 0;
+      return matchNome && agendamentoPendente;
     } else if (filtroStatus === "pagos") {
-      return matchNome && c.totalPendente === 0;
+      return matchNome && !agendamentoPendente;
     }
     
     return matchNome;
@@ -307,9 +308,9 @@ export const PagamentosClientes = () => {
                         )}
                       </div>
                       
-                      {cliente.totalPendente > 0 ? (
+                      {ag.pagamento_pendente ? (
                         <Badge variant="destructive" className="text-sm">
-                          R$ {cliente.totalPendente.toFixed(2)} pendente
+                          {ag.valor_servico ? `R$ ${ag.valor_servico.toFixed(2)} pendente` : 'Pagamento pendente'}
                         </Badge>
                       ) : (
                         <Badge variant="default" className="bg-green-500 text-white text-sm">
