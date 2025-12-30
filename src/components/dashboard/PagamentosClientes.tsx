@@ -36,6 +36,7 @@ export const PagamentosClientes = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [filtroStatus, setFiltroStatus] = useState<"todos" | "pendentes" | "pagos">("todos");
+  const [valoresEdicao, setValoresEdicao] = useState<Record<string, string>>({});
 
   useEffect(() => {
     loadAgendamentos();
@@ -339,13 +340,22 @@ export const PagamentosClientes = () => {
                           <div className="flex items-center gap-2">
                             <span className="text-sm text-muted-foreground">Valor:</span>
                             <Input
-                              type="number"
-                              step="0.01"
-                              placeholder="0.00"
-                              value={ag.valor_servico || ""}
+                              type="text"
+                              inputMode="decimal"
+                              placeholder="0,00"
+                              value={valoresEdicao[ag.id] ?? (ag.valor_servico !== null ? ag.valor_servico.toString() : "")}
                               onChange={(e) => {
-                                const valor = parseFloat(e.target.value) || 0;
-                                updateValorServico(ag.id, valor);
+                                const valorStr = e.target.value.replace(/,/g, '.');
+                                if (/^\d*(\.\d{0,2})?$/.test(valorStr)) {
+                                  setValoresEdicao((prev) => ({ ...prev, [ag.id]: e.target.value }));
+                                }
+                              }}
+                              onBlur={() => {
+                                const valorStr = (valoresEdicao[ag.id] ?? "").replace(/,/g, '.');
+                                const valor = parseFloat(valorStr);
+                                if (!isNaN(valor) && valor !== ag.valor_servico) {
+                                  updateValorServico(ag.id, valor);
+                                }
                               }}
                               className="w-24 h-8 text-sm"
                             />
