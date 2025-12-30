@@ -20,6 +20,7 @@ interface Agendamento {
   pagamento_pendente: boolean;
   lembrete_pagamento_enviado: boolean;
   valor_servico: number | null;
+  enviar_notificacao_cobranca: boolean;
 }
 
 interface ClientePagamento {
@@ -132,6 +133,28 @@ export const PagamentosClientes = () => {
     } catch (error) {
       console.error('Erro ao atualizar status de pagamento:', error);
       toast.error('Erro ao atualizar pagamento');
+    }
+  };
+
+  const toggleNotificacaoCobranca = async (agendamentoId: string, currentStatus: boolean) => {
+    try {
+      const { error } = await supabase
+        .from('agendamentos')
+        .update({ enviar_notificacao_cobranca: !currentStatus })
+        .eq('id', agendamentoId);
+
+      if (error) throw error;
+
+      toast.success(
+        !currentStatus 
+          ? 'Notificação de cobrança ativada' 
+          : 'Notificação de cobrança desativada'
+      );
+      
+      loadAgendamentos();
+    } catch (error) {
+      console.error('Erro ao atualizar notificação:', error);
+      toast.error('Erro ao atualizar notificação');
     }
   };
 
@@ -310,13 +333,6 @@ export const PagamentosClientes = () => {
                         </label>
                       </div>
 
-                      {!ag.pagamento_pendente && (
-                        <Badge variant="outline" className="gap-1 bg-green-500/10 text-green-700 border-green-300">
-                          <CheckCircle className="h-3 w-3" />
-                          Pagamento realizado
-                        </Badge>
-                      )}
-
                       {ag.pagamento_pendente && (
                         <>
                           <div className="flex items-center gap-2">
@@ -332,6 +348,20 @@ export const PagamentosClientes = () => {
                               }}
                               className="w-24 h-8 text-sm"
                             />
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            <Checkbox
+                              id={`notificacao-${ag.id}`}
+                              checked={ag.enviar_notificacao_cobranca}
+                              onCheckedChange={() => toggleNotificacaoCobranca(ag.id, ag.enviar_notificacao_cobranca)}
+                            />
+                            <label
+                              htmlFor={`notificacao-${ag.id}`}
+                              className="text-sm font-medium cursor-pointer"
+                            >
+                              Notificação de cobrança
+                            </label>
                           </div>
 
                           {ag.lembrete_pagamento_enviado && (

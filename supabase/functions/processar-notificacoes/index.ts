@@ -64,6 +64,7 @@ serve(async (req) => {
       .select('*')
       .eq('pagamento_pendente', true)
       .eq('lembrete_pagamento_enviado', false)
+      .eq('enviar_notificacao_cobranca', true)
       .lt('datetime_start', agora.toISOString());
 
     if (errorPagamento) {
