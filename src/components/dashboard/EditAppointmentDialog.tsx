@@ -35,7 +35,18 @@ interface EditAppointmentDialogProps {
 }
 
 const formatarTelefone = (value: string) => {
-  const numeros = value.replace(/\D/g, '');
+  let numeros = value.replace(/\D/g, '');
+
+  // Remove código do país +55 quando vier copiado do WhatsApp
+  if (numeros.startsWith('55') && numeros.length > 11) {
+    numeros = numeros.slice(2);
+  }
+
+  // Garante no máximo 11 dígitos (DDD + número)
+  if (numeros.length > 11) {
+    numeros = numeros.slice(-11);
+  }
+
   if (numeros.length <= 2) return numeros.length > 0 ? `(${numeros}` : '';
   if (numeros.length <= 3) return `(${numeros.slice(0, 2)}) ${numeros.slice(2)}`;
   if (numeros.length <= 7) return `(${numeros.slice(0, 2)}) ${numeros.slice(2, 3)} ${numeros.slice(3)}`;

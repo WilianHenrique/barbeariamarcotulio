@@ -57,7 +57,17 @@ interface NovoAgendamentoDialogProps {
 
 // Máscara de telefone
 const formatarTelefone = (value: string) => {
-  const numeros = value.replace(/\D/g, '');
+  let numeros = value.replace(/\D/g, '');
+
+  // Remove código do país +55 quando vier copiado do WhatsApp
+  if (numeros.startsWith('55') && numeros.length > 11) {
+    numeros = numeros.slice(2);
+  }
+
+  // Garante no máximo 11 dígitos (DDD + número)
+  if (numeros.length > 11) {
+    numeros = numeros.slice(-11);
+  }
   
   if (numeros.length <= 2) {
     return numeros.length > 0 ? `(${numeros}` : '';
@@ -306,6 +316,9 @@ export const NovoAgendamentoDialog = ({
         horarios.push(horaFormatada);
       }
     }
+    // Adiciona horário extra exatamente às 20:00
+    const horarioFinal = `${HORARIOS_TRABALHO.fim.toString().padStart(2, '0')}:00`;
+    horarios.push(horarioFinal);
     return horarios;
   };
 
