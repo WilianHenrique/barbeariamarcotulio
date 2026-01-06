@@ -35,10 +35,10 @@ interface EditAppointmentDialogProps {
 }
 
 const formatarTelefone = (value: string) => {
-  let numeros = value.replace(/\D/g, '');
+  let numeros = value.replace(/\D/g, "");
 
   // Remove código do país +55 quando vier copiado do WhatsApp
-  if (numeros.startsWith('55') && numeros.length > 11) {
+  if (numeros.startsWith("55") && numeros.length > 10) {
     numeros = numeros.slice(2);
   }
 
@@ -47,11 +47,13 @@ const formatarTelefone = (value: string) => {
     numeros = numeros.slice(-11);
   }
 
-  if (numeros.length <= 2) return numeros.length > 0 ? `(${numeros}` : '';
-  if (numeros.length <= 3) return `(${numeros.slice(0, 2)}) ${numeros.slice(2)}`;
-  if (numeros.length <= 7) return `(${numeros.slice(0, 2)}) ${numeros.slice(2, 3)} ${numeros.slice(3)}`;
-  if (numeros.length <= 11) return `(${numeros.slice(0, 2)}) ${numeros.slice(2, 3)} ${numeros.slice(3, 7)}-${numeros.slice(7)}`;
-  return `(${numeros.slice(0, 2)}) ${numeros.slice(2, 3)} ${numeros.slice(3, 7)}-${numeros.slice(7, 11)}`;
+  if (numeros.length <= 2) return numeros.length > 0 ? `(${numeros}` : "";
+  if (numeros.length <= 6) return `(${numeros.slice(0, 2)}) ${numeros.slice(2)}`;
+  if (numeros.length >= 7 && numeros.length <= 10)
+    return `(${numeros.slice(0, 2)}) ${numeros.slice(2, 6)}-${numeros.slice(6)}`;
+  if (numeros.length === 11)
+    return `(${numeros.slice(0, 2)}) ${numeros.slice(2, 3)} ${numeros.slice(3, 7)}-${numeros.slice(7)}`;
+  return "";
 };
 
 const validarTelefone = (telefone: string) => {
