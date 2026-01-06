@@ -44,6 +44,25 @@ const HORARIOS_TRABALHO = {
   intervalo: 30, // minutos
 };
 
+// Máscara de telefone (ignora +55 copiado do WhatsApp)
+const formatarTelefone = (value: string) => {
+  let numeros = value.replace(/\D/g, '');
+
+  if (numeros.startsWith('55') && numeros.length > 11) {
+    numeros = numeros.slice(2);
+  }
+
+  if (numeros.length > 11) {
+    numeros = numeros.slice(-11);
+  }
+
+  if (numeros.length <= 2) return numeros.length > 0 ? `(${numeros}` : '';
+  if (numeros.length <= 3) return `(${numeros.slice(0, 2)}) ${numeros.slice(2)}`;
+  if (numeros.length <= 7) return `(${numeros.slice(0, 2)}) ${numeros.slice(2, 3)} ${numeros.slice(3)}`;
+  if (numeros.length <= 11) return `(${numeros.slice(0, 2)}) ${numeros.slice(2, 3)} ${numeros.slice(3, 7)}-${numeros.slice(7)}`;
+  return `(${numeros.slice(0, 2)}) ${numeros.slice(2, 3)} ${numeros.slice(3, 7)}-${numeros.slice(7, 11)}`;
+};
+
 type ViewMode = "day" | "week" | "month";
 type RecorrenciaType = "unico" | "semanal" | "mensal" | "personalizado";
 
@@ -147,7 +166,7 @@ export const NovoAgendamento = ({ onAgendamentoCriado, agendamentosExistentes }:
   // Selecionar cliente da lista
   const selecionarCliente = (cliente: ClienteSugestao) => {
     setNomeCliente(cliente.nome_cliente);
-    setTelefoneCliente(cliente.telefone_cliente || '');
+    setTelefoneCliente(cliente.telefone_cliente ? formatarTelefone(cliente.telefone_cliente) : '');
     setTelefoneEditavel(!cliente.telefone_cliente);
     setShowSugestoes(false);
   };
@@ -161,6 +180,9 @@ export const NovoAgendamento = ({ onAgendamentoCriado, agendamentosExistentes }:
         horarios.push(horaFormatada);
       }
     }
+    // Adiciona horário extra exatamente às 20:00
+    const horarioFinal = `${HORARIOS_TRABALHO.fim.toString().padStart(2, '0')}:00`;
+    horarios.push(horarioFinal);
     return horarios;
   };
 
@@ -287,7 +309,7 @@ export const NovoAgendamento = ({ onAgendamentoCriado, agendamentosExistentes }:
         return {
           user_id: user.id,
           nome_cliente: nomeCliente,
-          telefone_cliente: telefoneCliente || null,
+          telefone_cliente: telefoneCliente.replace(/\D/g, '') || null,
           servico: servico?.nome || '',
           datetime_start: datetimeStart.toISOString(),
           datetime_end: datetimeEnd.toISOString(),
@@ -405,8 +427,8 @@ export const NovoAgendamento = ({ onAgendamentoCriado, agendamentosExistentes }:
               <Input
                 id="telefone"
                 value={telefoneCliente}
-                onChange={(e) => setTelefoneCliente(e.target.value)}
-                placeholder="(00) 00000-0000"
+                onChange={(e) => setTelefoneCliente(formatarTelefone(e.target.value))}
+                placeholder="(00) 0 0000-0000"
                 className="bg-secondary/50 border-border focus:border-primary flex-1"
                 disabled={!telefoneEditavel}
               />

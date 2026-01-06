@@ -39,7 +39,18 @@ interface Servico {
 type RecorrenciaType = "unico" | "semanal" | "mensal" | "personalizado";
 
 const formatarTelefone = (value: string) => {
-  const numeros = value.replace(/\D/g, "");
+  let numeros = value.replace(/\D/g, "");
+
+  // Remove código do país +55 quando vier copiado do WhatsApp
+  if (numeros.startsWith("55") && numeros.length > 11) {
+    numeros = numeros.slice(2);
+  }
+
+  // Garante no máximo 11 dígitos (DDD + número)
+  if (numeros.length > 11) {
+    numeros = numeros.slice(-11);
+  }
+
   if (numeros.length <= 2) return numeros.length > 0 ? `(${numeros}` : "";
   if (numeros.length <= 3) return `(${numeros.slice(0, 2)}) ${numeros.slice(2)}`;
   if (numeros.length <= 7) return `(${numeros.slice(0, 2)}) ${numeros.slice(2, 3)} ${numeros.slice(3)}`;
@@ -257,8 +268,10 @@ export const AppointmentDialog = ({
 
   const gerarHorariosDisponiveis = () => {
     const horarios: string[] = [];
-    for (let hora = 8; hora < 20; hora++) {
+    for (let hora = 8; hora <= 20; hora++) {
       for (let minuto = 0; minuto < 60; minuto += 15) {
+        // Para as 20h, permite apenas o horário cheio 20:00
+        if (hora === 20 && minuto > 0) continue;
         horarios.push(`${hora.toString().padStart(2, "0")}:${minuto.toString().padStart(2, "0")}`);
       }
     }
