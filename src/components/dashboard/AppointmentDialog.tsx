@@ -760,7 +760,7 @@ export const AppointmentDialog = ({
                       <div className="flex items-center gap-2 mt-1">
                         <span>A cada</span>
                         <select
-                          className="w-16 h-8 bg-secondary/50 border border-border rounded-md text-center text-sm"
+                          className="w-16 h-8 rounded-md border border-border bg-card text-foreground text-sm text-center shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary cursor-pointer"
                           value={recorrenciaPersonalizada}
                           onChange={(e) => {
                             const parsed = parseInt(e.target.value, 10);
@@ -770,7 +770,7 @@ export const AppointmentDialog = ({
                           }}
                         >
                           {[1, 2, 3, 4].map((n) => (
-                            <option key={n} value={n}>
+                            <option key={n} value={n} className="bg-card text-foreground">
                               {n}
                             </option>
                           ))}
