@@ -759,22 +759,22 @@ export const AppointmentDialog = ({
                     {tipoRecorrencia === "personalizado" && (
                       <div className="flex items-center gap-2 mt-1">
                         <span>A cada</span>
-                        <Input
-                          type="number"
-                          min={1}
-                          max={4}
+                        <select
+                          className="w-16 h-8 bg-secondary/50 border border-border rounded-md text-center text-sm"
                           value={recorrenciaPersonalizada}
                           onChange={(e) => {
-                            const raw = e.target.value;
-                            const parsed = parseInt(raw.replace(/\D/g, ""), 10);
-                            if (Number.isNaN(parsed)) {
-                              setRecorrenciaPersonalizada(1);
-                            } else {
+                            const parsed = parseInt(e.target.value, 10);
+                            if (!Number.isNaN(parsed)) {
                               setRecorrenciaPersonalizada(Math.min(4, Math.max(1, parsed)));
                             }
                           }}
-                          className="w-16 h-8 bg-secondary/50 border-border text-center"
-                        />
+                        >
+                          {[1, 2, 3, 4].map((n) => (
+                            <option key={n} value={n}>
+                              {n}
+                            </option>
+                          ))}
+                        </select>
                         <span>semana(s)</span>
                       </div>
                     )}
