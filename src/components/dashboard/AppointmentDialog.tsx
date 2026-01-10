@@ -764,11 +764,15 @@ export const AppointmentDialog = ({
                           min={1}
                           max={4}
                           value={recorrenciaPersonalizada}
-                          onChange={(e) =>
-                            setRecorrenciaPersonalizada(
-                              Math.min(4, Math.max(1, Number(e.target.value) || 1)),
-                            )
-                          }
+                          onChange={(e) => {
+                            const raw = e.target.value;
+                            const parsed = parseInt(raw.replace(/\D/g, ""), 10);
+                            if (Number.isNaN(parsed)) {
+                              setRecorrenciaPersonalizada(1);
+                            } else {
+                              setRecorrenciaPersonalizada(Math.min(4, Math.max(1, parsed)));
+                            }
+                          }}
                           className="w-16 h-8 bg-secondary/50 border-border text-center"
                         />
                         <span>semana(s)</span>
