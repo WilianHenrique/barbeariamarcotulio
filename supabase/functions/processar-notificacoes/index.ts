@@ -8,6 +8,12 @@ const corsHeaders = {
 
 const DEFAULT_WEBHOOK_URL = "https://automacoes.federalassociadoscadastro.com/webhook/agendamentos_marco_tulio";
 
+const getFirstName = (fullName: string | null | undefined) => {
+  const cleaned = (fullName ?? '').trim();
+  if (!cleaned) return '';
+  return cleaned.split(/\s+/)[0];
+};
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -113,11 +119,13 @@ serve(async (req) => {
           }
 
           // Substituir variáveis na mensagem personalizada
+          const firstName = getFirstName(agendamento.nome_cliente) || agendamento.nome_cliente;
+
           let mensagemPersonalizada = template24h.mensagem;
           mensagemPersonalizada = mensagemPersonalizada
             .replace(/{hora_agendada}/g, agendamento.hora_agendada)
             .replace(/{servico}/g, agendamento.servico)
-            .replace(/{nome_cliente}/g, agendamento.nome_cliente);
+            .replace(/{nome_cliente}/g, firstName);
 
           // Formatar dia agendado no padrão brasileiro DD/MM/AAAA
           const dataEvento24h = new Date(agendamento.datetime_start);
@@ -137,7 +145,7 @@ serve(async (req) => {
 
           const payload = {
             id_evento: agendamento.id_evento,
-            Nome_cliente: agendamento.nome_cliente,
+            Nome_cliente: firstName,
             "dateTime-start": agendamento.datetime_start,
             "dateTime-end": agendamento.datetime_end,
             Dia_agendado_formatado: agendamento.dia_agendado_formatado,
@@ -228,11 +236,13 @@ serve(async (req) => {
           }
 
           // Substituir variáveis na mensagem personalizada
+          const firstName = getFirstName(agendamento.nome_cliente) || agendamento.nome_cliente;
+
           let mensagemPersonalizada = template1h.mensagem;
           mensagemPersonalizada = mensagemPersonalizada
             .replace(/{hora_agendada}/g, agendamento.hora_agendada)
             .replace(/{servico}/g, agendamento.servico)
-            .replace(/{nome_cliente}/g, agendamento.nome_cliente);
+            .replace(/{nome_cliente}/g, firstName);
 
           // Formatar dia agendado no padrão brasileiro DD/MM/AAAA
           const dataEvento1h = new Date(agendamento.datetime_start);
@@ -252,7 +262,7 @@ serve(async (req) => {
 
           const payload = {
             id_evento: agendamento.id_evento,
-            Nome_cliente: agendamento.nome_cliente,
+            Nome_cliente: firstName,
             "dateTime-start": agendamento.datetime_start,
             "dateTime-end": agendamento.datetime_end,
             Dia_agendado_formatado: agendamento.dia_agendado_formatado,
@@ -362,6 +372,8 @@ serve(async (req) => {
           }
 
           // Substituir variáveis na mensagem personalizada
+          const firstName = getFirstName(agendamento.nome_cliente) || agendamento.nome_cliente;
+
           let mensagemPersonalizada = templatePagamento.mensagem;
           const valorServico = agendamento.valor_servico 
             ? `R$ ${agendamento.valor_servico.toFixed(2)}`
@@ -370,7 +382,7 @@ serve(async (req) => {
           mensagemPersonalizada = mensagemPersonalizada
             .replace(/{hora_agendada}/g, agendamento.hora_agendada)
             .replace(/{servico}/g, agendamento.servico)
-            .replace(/{nome_cliente}/g, agendamento.nome_cliente)
+            .replace(/{nome_cliente}/g, firstName)
             .replace(/{valor_servico}/g, valorServico);
 
           // Formatar dia agendado no padrão brasileiro DD/MM/AAAA
@@ -379,7 +391,7 @@ serve(async (req) => {
 
           const payload = {
             id_evento: agendamento.id_evento,
-            Nome_cliente: agendamento.nome_cliente,
+            Nome_cliente: firstName,
             "dateTime-start": agendamento.datetime_start,
             "dateTime-end": agendamento.datetime_end,
             Dia_agendado_formatado: agendamento.dia_agendado_formatado,
