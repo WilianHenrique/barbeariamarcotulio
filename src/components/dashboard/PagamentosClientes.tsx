@@ -10,6 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { format, parse } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { cn } from "@/lib/utils";
 
 interface Agendamento {
   id: string;
@@ -317,7 +318,11 @@ export const PagamentosClientes = () => {
                 return (
                   <div
                     key={cliente.nome.toLowerCase()}
-                    className="p-4 border border-border/50 rounded-lg hover:bg-accent/5 transition-colors space-y-3"
+                    className={cn(
+                      "p-4 border border-border/50 rounded-lg transition-colors space-y-3",
+                      "hover:bg-accent/5",
+                      possuiPendencias && "bg-destructive/5 border-destructive/20 ring-1 ring-destructive/20",
+                    )}
                   >
                     <div className="flex items-start justify-between">
                       <div className="space-y-1">

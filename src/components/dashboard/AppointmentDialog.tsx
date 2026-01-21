@@ -11,6 +11,7 @@ import { ptBR } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { PendingPaymentsAlert } from "@/components/dashboard/PendingPaymentsAlert";
 
 interface ClienteSugestao {
   nome_cliente: string;
@@ -919,6 +920,8 @@ export const AppointmentDialog = ({
                   </div>
                 )}
               </div>
+
+              <PendingPaymentsAlert nomeCliente={nomeCliente} />
 
               <div className="space-y-2">
                 <Label className="text-foreground text-sm flex items-center gap-2">
