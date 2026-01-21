@@ -16,8 +16,34 @@ function normalizeName(value: string) {
   return value.trim().replace(/\s+/g, " ");
 }
 
-export function PendingPaymentsAlert({ nomeCliente }: { nomeCliente: string }) {
+function buildNameIlikePattern(nome: string) {
+  // Troca espaços por % para tolerar variações (ex.: duplo espaço no banco)
+  const parts = nome
+    .trim()
+    .split(" ")
+    .map((p) => p.trim())
+    .filter(Boolean);
+  if (parts.length === 0) return "";
+  return `%${parts.join("%")}%`;
+}
+
+function onlyDigits(value: string) {
+  return value.replace(/\D/g, "");
+}
+
+type PendingPaymentsAlertProps = {
+  /** Mostre SOMENTE quando o cliente foi selecionado (não enquanto digita). */
+  enabled: boolean;
+  nomeCliente: string;
+  telefoneCliente?: string | null;
+};
+
+export function PendingPaymentsAlert({ enabled, nomeCliente, telefoneCliente }: PendingPaymentsAlertProps) {
   const nome = useMemo(() => normalizeName(nomeCliente), [nomeCliente]);
+  const telefone = useMemo(
+    () => (telefoneCliente ? onlyDigits(telefoneCliente) : ""),
+    [telefoneCliente],
+  );
   const [loading, setLoading] = useState(false);
   const [items, setItems] = useState<PendingPaymentItem[]>([]);
 
@@ -25,7 +51,13 @@ export function PendingPaymentsAlert({ nomeCliente }: { nomeCliente: string }) {
     let cancelled = false;
 
     const run = async () => {
-      if (nome.length < 2) {
+      if (!enabled) {
+        setLoading(false);
+        setItems([]);
+        return;
+      }
+
+      if (telefone.length < 10 && nome.length < 2) {
         setItems([]);
         return;
       }
@@ -38,15 +70,23 @@ export function PendingPaymentsAlert({ nomeCliente }: { nomeCliente: string }) {
         if (!user) return;
 
         const nowIso = new Date().toISOString();
-        const { data, error } = await supabase
+        let query = supabase
           .from("agendamentos")
           .select("id, datetime_start, servico, valor_servico")
           .eq("user_id", user.id)
           .eq("pagamento_pendente", true)
           .lt("datetime_start", nowIso)
-          // match exato (case-insensitive)
-          .ilike("nome_cliente", nome)
           .order("datetime_start", { ascending: false });
+
+        // Preferir telefone (identificador mais estável). Fallback para nome.
+        if (telefone.length >= 10) {
+          query = query.eq("telefone_cliente", telefone);
+        } else {
+          // tolerante a variações de espaçamento/case
+          query = query.ilike("nome_cliente", buildNameIlikePattern(nome));
+        }
+
+        const { data, error } = await query;
 
         if (error) throw error;
         if (!cancelled) setItems((data as PendingPaymentItem[]) || []);
@@ -62,13 +102,14 @@ export function PendingPaymentsAlert({ nomeCliente }: { nomeCliente: string }) {
       cancelled = true;
       clearTimeout(t);
     };
-  }, [nome]);
+  }, [enabled, nome, telefone]);
 
   const total = useMemo(
     () => items.reduce((sum, it) => sum + (Number(it.valor_servico ?? 0) || 0), 0),
     [items],
   );
 
+  if (!enabled) return null;
   if (!loading && items.length === 0) return null;
 
   return (
