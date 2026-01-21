@@ -90,6 +90,7 @@ export const AppointmentDialog = ({
   const [nomeCliente, setNomeCliente] = useState("");
   const [telefoneCliente, setTelefoneCliente] = useState("");
   const [telefoneEditavel, setTelefoneEditavel] = useState(true);
+  const [clienteSelecionado, setClienteSelecionado] = useState<ClienteSugestao | null>(null);
   const [clientesSugestoes, setClientesSugestoes] = useState<ClienteSugestao[]>([]);
   const [showSugestoes, setShowSugestoes] = useState(false);
   const [servicos, setServicos] = useState<Servico[]>([]);
@@ -146,6 +147,7 @@ export const AppointmentDialog = ({
       setNomeCliente("");
       setTelefoneCliente("");
       setTelefoneEditavel(true);
+      setClienteSelecionado(null);
       setServicoSelecionado(null);
       setServicoPersonalizado("");
       setIsServicoPersonalizado(false);
@@ -222,6 +224,7 @@ export const AppointmentDialog = ({
     setNomeCliente(cliente.nome_cliente);
     setTelefoneCliente(cliente.telefone_cliente ? formatarTelefone(cliente.telefone_cliente) : "");
     setTelefoneEditavel(!cliente.telefone_cliente);
+    setClienteSelecionado(cliente);
     setShowSugestoes(false);
   };
 
@@ -900,6 +903,8 @@ export const AppointmentDialog = ({
                   onChange={(e) => {
                     setNomeCliente(e.target.value);
                     setTelefoneEditavel(true);
+                    // Só exibimos aviso de pendências após selecionar um cliente existente.
+                    setClienteSelecionado(null);
                   }}
                   placeholder="Digite o nome"
                   className="input-refined"
@@ -921,7 +926,11 @@ export const AppointmentDialog = ({
                 )}
               </div>
 
-              <PendingPaymentsAlert nomeCliente={nomeCliente} />
+              <PendingPaymentsAlert
+                enabled={!!clienteSelecionado}
+                nomeCliente={clienteSelecionado?.nome_cliente || nomeCliente}
+                telefoneCliente={clienteSelecionado?.telefone_cliente}
+              />
 
               <div className="space-y-2">
                 <Label className="text-foreground text-sm flex items-center gap-2">
