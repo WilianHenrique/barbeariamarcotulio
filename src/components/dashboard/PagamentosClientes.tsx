@@ -28,6 +28,7 @@ interface ClientePagamento {
   telefone: string | null;
   ultimoAgendamento: Agendamento;
   totalPendente: number;
+  agendamentosPendentes: Agendamento[];
 }
 
 export const PagamentosClientes = () => {
@@ -89,6 +90,7 @@ export const PagamentosClientes = () => {
           telefone: ag.telefone_cliente,
           ultimoAgendamento: ag,
           totalPendente: 0,
+          agendamentosPendentes: [],
         });
       }
 
@@ -99,10 +101,27 @@ export const PagamentosClientes = () => {
         cliente.ultimoAgendamento = ag;
       }
 
+      // Atualizar telefone se vier preenchido
+      if (ag.telefone_cliente) {
+        cliente.telefone = ag.telefone_cliente;
+      }
+
       // Somar valores pendentes
       if (ag.pagamento_pendente && ag.valor_servico) {
         cliente.totalPendente += ag.valor_servico;
       }
+
+      // Manter lista de TODOS os agendamentos pendentes do cliente (para não "sumir" quando há novos agendamentos)
+      if (ag.pagamento_pendente) {
+        cliente.agendamentosPendentes.push(ag);
+      }
+    });
+
+    // Ordenar pendências por data (mais recente primeiro)
+    clientesMap.forEach((cliente) => {
+      cliente.agendamentosPendentes.sort(
+        (a, b) => new Date(b.datetime_start).getTime() - new Date(a.datetime_start).getTime()
+      );
     });
 
     const clientes = Array.from(clientesMap.values()).sort((a, b) => 
@@ -178,20 +197,20 @@ export const PagamentosClientes = () => {
 
   const clientesFiltrados = clientesAgrupados.filter((c) => {
     const matchNome = c.nome.toLowerCase().includes(searchTerm.toLowerCase());
-    const agendamentoPendente = c.ultimoAgendamento.pagamento_pendente;
+    const possuiPendencias = c.agendamentosPendentes.length > 0;
     
     if (filtroStatus === "pendentes") {
-      return matchNome && agendamentoPendente;
+      return matchNome && possuiPendencias;
     } else if (filtroStatus === "pagos") {
-      return matchNome && !agendamentoPendente;
+      return matchNome && !possuiPendencias;
     }
     
     return matchNome;
   });
 
   const totalGeralPendente = clientesAgrupados.reduce((sum, c) => sum + c.totalPendente, 0);
-  const totalClientesPendentes = clientesAgrupados.filter((c) => c.totalPendente > 0).length;
-  const totalClientesPagos = clientesAgrupados.filter((c) => c.totalPendente === 0).length;
+  const totalClientesPendentes = clientesAgrupados.filter((c) => c.agendamentosPendentes.length > 0).length;
+  const totalClientesPagos = clientesAgrupados.filter((c) => c.agendamentosPendentes.length === 0).length;
 
   return (
     <div className="space-y-6">
@@ -288,20 +307,29 @@ export const PagamentosClientes = () => {
           ) : (
             <div className="space-y-4">
               {clientesFiltrados.map((cliente) => {
-                const ag = cliente.ultimoAgendamento;
-                const dataAgendamento = parse(ag.datetime_start.split('T')[0], 'yyyy-MM-dd', new Date());
+                const agUltimo = cliente.ultimoAgendamento;
+                const dataUltimo = parse(agUltimo.datetime_start.split('T')[0], 'yyyy-MM-dd', new Date());
+                const possuiPendencias = cliente.agendamentosPendentes.length > 0;
+                const agendamentosParaExibir = possuiPendencias
+                  ? cliente.agendamentosPendentes
+                  : [agUltimo];
                 
                 return (
                   <div
-                    key={ag.id}
+                    key={cliente.nome.toLowerCase()}
                     className="p-4 border border-border/50 rounded-lg hover:bg-accent/5 transition-colors space-y-3"
                   >
                     <div className="flex items-start justify-between">
                       <div className="space-y-1">
                         <h3 className="font-semibold text-lg text-foreground">{cliente.nome}</h3>
                         <p className="text-sm text-muted-foreground">
-                          Último agendamento: {format(dataAgendamento, "dd/MM/yyyy", { locale: ptBR })} - {ag.servico}
+                          Último agendamento: {format(dataUltimo, "dd/MM/yyyy", { locale: ptBR })} - {agUltimo.servico}
                         </p>
+                        {possuiPendencias && (
+                          <p className="text-sm text-muted-foreground">
+                            Pendências: {cliente.agendamentosPendentes.length}
+                          </p>
+                        )}
                         {cliente.telefone && (
                           <p className="text-sm text-muted-foreground">
                             📱 {cliente.telefone}
@@ -309,9 +337,11 @@ export const PagamentosClientes = () => {
                         )}
                       </div>
                       
-                      {ag.pagamento_pendente ? (
+                      {possuiPendencias ? (
                         <Badge variant="destructive" className="text-sm">
-                          {ag.valor_servico ? `R$ ${ag.valor_servico.toFixed(2)} pendente` : 'Pagamento pendente'}
+                          {cliente.totalPendente > 0
+                            ? `R$ ${cliente.totalPendente.toFixed(2)} pendente`
+                            : 'Pagamento pendente'}
                         </Badge>
                       ) : (
                         <Badge variant="default" className="bg-green-500 text-white text-sm">
@@ -320,69 +350,91 @@ export const PagamentosClientes = () => {
                       )}
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-4 pt-2 border-t border-border/30">
-                      <div className="flex items-center gap-2">
-                        <Checkbox
-                          id={`pagamento-${ag.id}`}
-                          checked={ag.pagamento_pendente}
-                          onCheckedChange={() => togglePagamentoPendente(ag.id, ag.pagamento_pendente)}
-                        />
-                        <label
-                          htmlFor={`pagamento-${ag.id}`}
-                          className="text-sm font-medium cursor-pointer"
-                        >
-                          Marcar como pendente
-                        </label>
-                      </div>
+                    <div className="space-y-3 pt-2 border-t border-border/30">
+                      {agendamentosParaExibir.map((ag) => {
+                        const dataAgendamento = parse(ag.datetime_start.split('T')[0], 'yyyy-MM-dd', new Date());
+                        const isPendente = ag.pagamento_pendente;
 
-                      {ag.pagamento_pendente && (
-                        <>
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm text-muted-foreground">Valor:</span>
-                            <Input
-                              type="text"
-                              inputMode="decimal"
-                              placeholder="0,00"
-                              value={valoresEdicao[ag.id] ?? (ag.valor_servico !== null ? ag.valor_servico.toString() : "")}
-                              onChange={(e) => {
-                                const valorStr = e.target.value.replace(/,/g, '.');
-                                if (/^\d*(\.\d{0,2})?$/.test(valorStr)) {
-                                  setValoresEdicao((prev) => ({ ...prev, [ag.id]: e.target.value }));
-                                }
-                              }}
-                              onBlur={() => {
-                                const valorStr = (valoresEdicao[ag.id] ?? "").replace(/,/g, '.');
-                                const valor = parseFloat(valorStr);
-                                if (!isNaN(valor) && valor !== ag.valor_servico) {
-                                  updateValorServico(ag.id, valor);
-                                }
-                              }}
-                              className="w-24 h-8 text-sm"
-                            />
+                        return (
+                          <div key={ag.id} className="space-y-2">
+                            {possuiPendencias && (
+                              <p className="text-sm text-muted-foreground">
+                                {format(dataAgendamento, "dd/MM/yyyy", { locale: ptBR })} - {ag.servico}
+                              </p>
+                            )}
+
+                            <div className="flex flex-wrap items-center gap-4">
+                              <div className="flex items-center gap-2">
+                                <Checkbox
+                                  id={`pagamento-${ag.id}`}
+                                  checked={isPendente}
+                                  onCheckedChange={() => togglePagamentoPendente(ag.id, isPendente)}
+                                />
+                                <label
+                                  htmlFor={`pagamento-${ag.id}`}
+                                  className="text-sm font-medium cursor-pointer"
+                                >
+                                  Marcar como pendente
+                                </label>
+                              </div>
+
+                              {isPendente && (
+                                <>
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-sm text-muted-foreground">Valor:</span>
+                                    <Input
+                                      type="text"
+                                      inputMode="decimal"
+                                      placeholder="0,00"
+                                      value={
+                                        valoresEdicao[ag.id] ??
+                                        (ag.valor_servico !== null ? ag.valor_servico.toString() : "")
+                                      }
+                                      onChange={(e) => {
+                                        const valorStr = e.target.value.replace(/,/g, '.');
+                                        if (/^\d*(\.\d{0,2})?$/.test(valorStr)) {
+                                          setValoresEdicao((prev) => ({ ...prev, [ag.id]: e.target.value }));
+                                        }
+                                      }}
+                                      onBlur={() => {
+                                        const valorStr = (valoresEdicao[ag.id] ?? "").replace(/,/g, '.');
+                                        const valor = parseFloat(valorStr);
+                                        if (!isNaN(valor) && valor !== ag.valor_servico) {
+                                          updateValorServico(ag.id, valor);
+                                        }
+                                      }}
+                                      className="w-24 h-8 text-sm"
+                                    />
+                                  </div>
+
+                                  <div className="flex items-center gap-2">
+                                    <Checkbox
+                                      id={`notificacao-${ag.id}`}
+                                      checked={ag.enviar_notificacao_cobranca}
+                                      onCheckedChange={() =>
+                                        toggleNotificacaoCobranca(ag.id, ag.enviar_notificacao_cobranca)
+                                      }
+                                    />
+                                    <label
+                                      htmlFor={`notificacao-${ag.id}`}
+                                      className="text-sm font-medium cursor-pointer"
+                                    >
+                                      Notificação de cobrança
+                                    </label>
+                                  </div>
+
+                                  {ag.lembrete_pagamento_enviado && (
+                                    <Badge variant="outline" className="gap-1">
+                                      <Clock className="h-3 w-3" />
+                                      Lembrete enviado
+                                    </Badge>
+                                  )}
+                                </>
+                              )}
+                            </div>
                           </div>
-
-                          <div className="flex items-center gap-2">
-                            <Checkbox
-                              id={`notificacao-${ag.id}`}
-                              checked={ag.enviar_notificacao_cobranca}
-                              onCheckedChange={() => toggleNotificacaoCobranca(ag.id, ag.enviar_notificacao_cobranca)}
-                            />
-                            <label
-                              htmlFor={`notificacao-${ag.id}`}
-                              className="text-sm font-medium cursor-pointer"
-                            >
-                              Notificação de cobrança
-                            </label>
-                          </div>
-
-                          {ag.lembrete_pagamento_enviado && (
-                            <Badge variant="outline" className="gap-1">
-                              <Clock className="h-3 w-3" />
-                              Lembrete enviado
-                            </Badge>
-                          )}
-                        </>
-                      )}
+                        );
+                      })}
                     </div>
                   </div>
                 );
