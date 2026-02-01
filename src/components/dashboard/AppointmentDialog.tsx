@@ -98,6 +98,7 @@ export const AppointmentDialog = ({
   const [servicoPersonalizado, setServicoPersonalizado] = useState("");
   const [isServicoPersonalizado, setIsServicoPersonalizado] = useState(false);
   const [tempoServico, setTempoServico] = useState(30);
+  const [tempoServicoInput, setTempoServicoInput] = useState("30");
   const [dataSelecionada, setDataSelecionada] = useState<Date>(new Date());
   const [horarioSelecionado, setHorarioSelecionado] = useState<string | null>(null);
   const [horarioManual, setHorarioManual] = useState("");
@@ -152,6 +153,7 @@ export const AppointmentDialog = ({
       setServicoPersonalizado("");
       setIsServicoPersonalizado(false);
       setTempoServico(30);
+      setTempoServicoInput("30");
       setHorarioSelecionado(null);
       setHorarioManual("");
       setErroHorarioManual("");
@@ -164,7 +166,9 @@ export const AppointmentDialog = ({
 
   useEffect(() => {
     if (servicoSelecionado && !isServicoPersonalizado) {
-      setTempoServico(servicoSelecionado.duracao_minutos);
+      const duracao = servicoSelecionado.duracao_minutos;
+      setTempoServico(duracao);
+      setTempoServicoInput(String(duracao));
     }
   }, [servicoSelecionado, isServicoPersonalizado]);
 
@@ -584,13 +588,13 @@ export const AppointmentDialog = ({
                 </Label>
                 <Input
                   type="number"
-                  value={tempoServico}
+                  value={tempoServicoInput}
                   onChange={(e) => {
                     const value = e.target.value;
+                    // Permite campo vazio enquanto o usuário digita
+                    setTempoServicoInput(value);
 
-                    // Permite apagar o campo sem forçar imediatamente um valor mínimo
                     if (value === "") {
-                      setTempoServico(0);
                       return;
                     }
 
