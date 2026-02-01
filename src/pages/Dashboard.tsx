@@ -13,6 +13,7 @@ import { MensagensAgendadas } from "@/components/dashboard/MensagensAgendadas";
 import { RelatorioGeral } from "@/components/dashboard/RelatorioGeral";
 import { ClientesList } from "@/components/dashboard/ClientesList";
 import { PagamentosClientes } from "@/components/dashboard/PagamentosClientes";
+import { Vendas } from "@/components/dashboard/Vendas";
 import { Input } from "@/components/ui/input";
 import { Search, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -207,7 +208,8 @@ const Dashboard = () => {
                 {activeTab === "agenda" && "Agenda"}
                 {activeTab === "pendentes" && "Agendamentos Pendentes"}
                 {activeTab === "mensagens" && "Mensagens"}
-                {activeTab === "pagamentos" && "Pagamentos"}
+                 {activeTab === "pagamentos" && "Pagamentos"}
+                 {activeTab === "vendas" && "Vendas"}
                 {activeTab === "clientes" && "Clientes"}
                 {activeTab === "relatorios" && "Relatórios"}
               </h1>
@@ -215,7 +217,8 @@ const Dashboard = () => {
                 {activeTab === "agenda" && "Visualize e gerencie seus agendamentos"}
                 {activeTab === "pendentes" && "Agendamentos que aguardam confirmação"}
                 {activeTab === "mensagens" && "Configure suas mensagens de notificação"}
-                {activeTab === "pagamentos" && "Controle de pagamentos e lembretes automáticos"}
+                 {activeTab === "pagamentos" && "Controle de pagamentos e lembretes automáticos"}
+                 {activeTab === "vendas" && "Registrar vendas de produtos e acompanhar faturamento"}
                 {activeTab === "clientes" && "Gerencie sua lista de clientes"}
                 {activeTab === "relatorios" && "Acompanhe o desempenho da barbearia"}
               </p>
@@ -288,6 +291,10 @@ const Dashboard = () => {
 
           {activeTab === "pagamentos" && (
             <PagamentosClientes />
+          )}
+
+          {activeTab === "vendas" && (
+            <Vendas />
           )}
 
           {activeTab === "clientes" && (
