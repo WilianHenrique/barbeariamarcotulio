@@ -585,7 +585,20 @@ export const AppointmentDialog = ({
                 <Input
                   type="number"
                   value={tempoServico}
-                  onChange={(e) => setTempoServico(Math.max(1, parseInt(e.target.value) || 0))}
+                  onChange={(e) => {
+                    const value = e.target.value;
+
+                    // Permite apagar o campo sem forçar imediatamente um valor mínimo
+                    if (value === "") {
+                      setTempoServico(0);
+                      return;
+                    }
+
+                    const parsed = parseInt(value, 10);
+                    if (!Number.isNaN(parsed)) {
+                      setTempoServico(parsed);
+                    }
+                  }}
                   min={1}
                   className="input-refined"
                 />
