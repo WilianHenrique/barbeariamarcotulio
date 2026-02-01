@@ -253,6 +253,33 @@ export type Database = {
         }
         Relationships: []
       }
+      vendas: {
+        Row: {
+          created_at: string
+          descricao_produto: string
+          id: string
+          nome_comprador: string | null
+          user_id: string
+          valor: number
+        }
+        Insert: {
+          created_at?: string
+          descricao_produto: string
+          id?: string
+          nome_comprador?: string | null
+          user_id: string
+          valor?: number
+        }
+        Update: {
+          created_at?: string
+          descricao_produto?: string
+          id?: string
+          nome_comprador?: string | null
+          user_id?: string
+          valor?: number
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

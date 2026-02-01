@@ -6,10 +6,10 @@ import {
   BarChart3, 
   Settings, 
   LogOut,
-  Scissors,
   Menu,
   X,
-  Users
+  Users,
+  ShoppingBag,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -28,6 +28,7 @@ const navItems = [
   { id: "pendentes", label: "Pendentes", icon: Clock },
   { id: "mensagens", label: "Mensagens", icon: MessageSquare },
   { id: "pagamentos", label: "Pagamentos", icon: Calendar },
+   { id: "vendas", label: "Vendas", icon: ShoppingBag },
   { id: "clientes", label: "Clientes", icon: Users },
   { id: "relatorios", label: "Relatórios", icon: BarChart3 },
 ];

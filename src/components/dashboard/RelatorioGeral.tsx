@@ -25,30 +25,44 @@ interface RelatorioGeralProps {
   agendamentos: Agendamento[];
 }
 
+interface Venda {
+  valor: number;
+  created_at: string;
+}
+
 export const RelatorioGeral = ({ agendamentos }: RelatorioGeralProps) => {
   const [servicos, setServicos] = useState<Servico[]>([]);
+  const [vendas, setVendas] = useState<Venda[]>([]);
   const [periodoGrafico, setPeriodoGrafico] = useState<"dia" | "semana" | "mes">("dia");
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    carregarServicos();
+    carregarDados();
   }, []);
 
-  const carregarServicos = async () => {
+  const carregarDados = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const { data, error } = await supabase
+      const { data: servicosData, error: servicosError } = await supabase
         .from('servicos')
         .select('nome, preco_normal, preco_fidelidade')
         .eq('user_id', user.id)
         .eq('ativo', true);
 
-      if (error) throw error;
-      setServicos(data || []);
+      if (servicosError) throw servicosError;
+      setServicos(servicosData || []);
+
+      const { data: vendasData, error: vendasError } = await supabase
+        .from('vendas')
+        .select('valor, created_at')
+        .eq('user_id', user.id);
+
+      if (vendasError) throw vendasError;
+      setVendas((vendasData || []) as Venda[]);
     } catch (error) {
-      console.error("Erro ao carregar serviços:", error);
+      console.error("Erro ao carregar dados de relatórios:", error);
     } finally {
       setIsLoading(false);
     }
@@ -88,6 +102,7 @@ export const RelatorioGeral = ({ agendamentos }: RelatorioGeralProps) => {
   const calcularFaturamentoPorPeriodo = () => {
     const agora = new Date();
     const agendamentosPassados = agendamentos.filter(ag => new Date(ag.datetime_start) < agora);
+    const vendasPassadas = vendas.filter(v => new Date(v.created_at) < agora);
     
     let dataInicio: Date;
     let dataFim: Date;
@@ -137,6 +152,21 @@ export const RelatorioGeral = ({ agendamentos }: RelatorioGeralProps) => {
           const isRecorrente = ag.evento_recorrente?.toLowerCase() === 'sim';
           faturamento += isRecorrente ? servico.preco_fidelidade : servico.preco_normal;
         }
+      });
+
+      const vendasDoPeriodo = vendasPassadas.filter(venda => {
+        const dataVenda = new Date(venda.created_at);
+        if (periodoGrafico === "dia") {
+          return isSameDay(dataVenda, periodo);
+        } else if (periodoGrafico === "semana") {
+          return isSameWeek(dataVenda, periodo, { locale: ptBR });
+        } else {
+          return isSameMonth(dataVenda, periodo);
+        }
+      });
+
+      vendasDoPeriodo.forEach(v => {
+        faturamento += Number(v.valor || 0);
       });
 
       let label = "";
