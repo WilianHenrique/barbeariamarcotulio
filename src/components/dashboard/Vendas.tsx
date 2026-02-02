@@ -341,16 +341,14 @@ export const Vendas = () => {
                               <Button size="sm" variant="ghost" onClick={cancelarEdicao}>
                                 Cancelar
                               </Button>
-                            </>
-                          ) : (
-                            <>
-                              <Button size="sm" variant="outline" onClick={() => iniciarEdicao(venda)}>
-                                Editar
-                              </Button>
                               <Button size="sm" variant="destructive" onClick={() => excluirVenda(venda.id)}>
                                 Excluir
                               </Button>
                             </>
+                          ) : (
+                            <Button size="sm" variant="outline" onClick={() => iniciarEdicao(venda)}>
+                              Editar
+                            </Button>
                           )}
                         </TableCell>
                       </TableRow>
