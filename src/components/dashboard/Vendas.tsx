@@ -6,6 +6,14 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 
 interface Venda {
   id: string;
@@ -15,16 +23,24 @@ interface Venda {
   created_at: string;
 }
 
+const ITENS_POR_PAGINA = 10;
+
 export const Vendas = () => {
   const [descricao, setDescricao] = useState("");
   const [valor, setValor] = useState("");
   const [nomeComprador, setNomeComprador] = useState("");
   const [vendas, setVendas] = useState<Venda[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [paginaAtual, setPaginaAtual] = useState(1);
 
   useEffect(() => {
     carregarVendas();
   }, []);
+
+  useEffect(() => {
+    // Sempre voltar para a primeira página quando o total de vendas mudar
+    setPaginaAtual(1);
+  }, [vendas.length]);
 
   const carregarVendas = async () => {
     try {
@@ -91,6 +107,10 @@ export const Vendas = () => {
   };
 
   const totalVendas = vendas.reduce((sum, v) => sum + Number(v.valor || 0), 0);
+
+  const totalPaginas = Math.ceil(vendas.length / ITENS_POR_PAGINA) || 1;
+  const indiceInicial = (paginaAtual - 1) * ITENS_POR_PAGINA;
+  const vendasPagina = vendas.slice(indiceInicial, indiceInicial + ITENS_POR_PAGINA);
 
   const produtosMaisVendidos = Object.values(
     vendas.reduce<Record<string, { descricao: string; quantidade: number; total: number }>>((acc, v) => {
@@ -166,33 +186,83 @@ export const Vendas = () => {
           ) : vendas.length === 0 ? (
             <p className="text-sm text-muted-foreground">Nenhuma venda registrada até o momento.</p>
           ) : (
-            <div className="relative w-full overflow-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Data</TableHead>
-                    <TableHead>Produto</TableHead>
-                    <TableHead>Comprador</TableHead>
-                    <TableHead className="text-right">Valor (R$)</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {vendas.map((venda) => (
-                    <TableRow key={venda.id}>
-                      <TableCell>
-                        {new Date(venda.created_at).toLocaleDateString("pt-BR", {
-                          day: "2-digit",
-                          month: "2-digit",
-                          year: "2-digit",
-                        })}
-                      </TableCell>
-                      <TableCell>{venda.descricao_produto}</TableCell>
-                      <TableCell>{venda.nome_comprador || "-"}</TableCell>
-                      <TableCell className="text-right">{Number(venda.valor).toFixed(2)}</TableCell>
+            <div className="space-y-4">
+              <div className="relative w-full overflow-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Data</TableHead>
+                      <TableHead>Produto</TableHead>
+                      <TableHead>Comprador</TableHead>
+                      <TableHead className="text-right">Valor (R$)</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {vendasPagina.map((venda) => (
+                      <TableRow key={venda.id}>
+                        <TableCell>
+                          {new Date(venda.created_at).toLocaleDateString("pt-BR", {
+                            day: "2-digit",
+                            month: "2-digit",
+                            year: "2-digit",
+                          })}
+                        </TableCell>
+                        <TableCell>{venda.descricao_produto}</TableCell>
+                        <TableCell>{venda.nome_comprador || "-"}</TableCell>
+                        <TableCell className="text-right">{Number(venda.valor).toFixed(2)}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+
+              {vendas.length > ITENS_POR_PAGINA && (
+                <Pagination className="mt-2">
+                  <PaginationContent>
+                    {paginaAtual > 1 && (
+                      <PaginationItem>
+                        <PaginationPrevious
+                          href="#"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            setPaginaAtual((pagina) => Math.max(1, pagina - 1));
+                          }}
+                        />
+                      </PaginationItem>
+                    )}
+
+                    {Array.from({ length: totalPaginas }).map((_, index) => {
+                      const pagina = index + 1;
+                      return (
+                        <PaginationItem key={pagina}>
+                          <PaginationLink
+                            href="#"
+                            isActive={paginaAtual === pagina}
+                            onClick={(e) => {
+                              e.preventDefault();
+                              setPaginaAtual(pagina);
+                            }}
+                          >
+                            {pagina}
+                          </PaginationLink>
+                        </PaginationItem>
+                      );
+                    })}
+
+                    {paginaAtual < totalPaginas && (
+                      <PaginationItem>
+                        <PaginationNext
+                          href="#"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            setPaginaAtual((pagina) => Math.min(totalPaginas, pagina + 1));
+                          }}
+                        />
+                      </PaginationItem>
+                    )}
+                  </PaginationContent>
+                </Pagination>
+              )}
             </div>
           )}
         </CardContent>
