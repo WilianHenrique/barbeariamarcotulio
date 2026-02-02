@@ -32,6 +32,10 @@ export const Vendas = () => {
   const [vendas, setVendas] = useState<Venda[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [paginaAtual, setPaginaAtual] = useState(1);
+  const [editandoId, setEditandoId] = useState<string | null>(null);
+  const [editDescricao, setEditDescricao] = useState("");
+  const [editValor, setEditValor] = useState("");
+  const [editNomeComprador, setEditNomeComprador] = useState("");
 
   useEffect(() => {
     carregarVendas();
@@ -103,6 +107,93 @@ export const Vendas = () => {
     } catch (error) {
       console.error("Erro ao registrar venda", error);
       toast.error("Erro ao registrar venda");
+    }
+  };
+
+  const iniciarEdicao = (venda: Venda) => {
+    setEditandoId(venda.id);
+    setEditDescricao(venda.descricao_produto);
+    setEditValor(String(venda.valor).replace(".", ","));
+    setEditNomeComprador(venda.nome_comprador || "");
+  };
+
+  const cancelarEdicao = () => {
+    setEditandoId(null);
+    setEditDescricao("");
+    setEditValor("");
+    setEditNomeComprador("");
+  };
+
+  const salvarEdicao = async () => {
+    if (!editandoId) return;
+
+    if (!editDescricao.trim()) {
+      toast.error("Informe o produto vendido");
+      return;
+    }
+
+    const valorNumber = Number(editValor.replace(",", "."));
+    if (!valorNumber || valorNumber <= 0) {
+      toast.error("Informe um valor válido");
+      return;
+    }
+
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) {
+        toast.error("Sessão expirada. Faça login novamente.");
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from("vendas")
+        .update({
+          descricao_produto: editDescricao.trim(),
+          valor: valorNumber,
+          nome_comprador: editNomeComprador.trim() || null,
+        })
+        .eq("id", editandoId)
+        .eq("user_id", user.id)
+        .select("id, descricao_produto, valor, nome_comprador, created_at")
+        .single();
+
+      if (error) throw error;
+
+      setVendas((prev) => prev.map((v) => (v.id === editandoId && data ? (data as Venda) : v)));
+      cancelarEdicao();
+      toast.success("Venda atualizada com sucesso");
+    } catch (error) {
+      console.error("Erro ao atualizar venda", error);
+      toast.error("Erro ao atualizar venda");
+    }
+  };
+
+  const excluirVenda = async (id: string) => {
+    const confirmar = window.confirm("Tem certeza que deseja excluir esta venda?");
+    if (!confirmar) return;
+
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) {
+        toast.error("Sessão expirada. Faça login novamente.");
+        return;
+      }
+
+      const { error } = await supabase.from("vendas").delete().eq("id", id).eq("user_id", user.id);
+      if (error) throw error;
+
+      setVendas((prev) => prev.filter((v) => v.id !== id));
+      if (editandoId === id) {
+        cancelarEdicao();
+      }
+      toast.success("Venda excluída com sucesso");
+    } catch (error) {
+      console.error("Erro ao excluir venda", error);
+      toast.error("Erro ao excluir venda");
     }
   };
 
@@ -195,6 +286,7 @@ export const Vendas = () => {
                       <TableHead>Produto</TableHead>
                       <TableHead>Comprador</TableHead>
                       <TableHead className="text-right">Valor (R$)</TableHead>
+                      <TableHead className="w-[160px] text-right">Ações</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -207,9 +299,60 @@ export const Vendas = () => {
                             year: "2-digit",
                           })}
                         </TableCell>
-                        <TableCell>{venda.descricao_produto}</TableCell>
-                        <TableCell>{venda.nome_comprador || "-"}</TableCell>
-                        <TableCell className="text-right">{Number(venda.valor).toFixed(2)}</TableCell>
+                        <TableCell>
+                          {editandoId === venda.id ? (
+                            <Input
+                              value={editDescricao}
+                              onChange={(e) => setEditDescricao(e.target.value)}
+                              className="h-8"
+                            />
+                          ) : (
+                            venda.descricao_produto
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {editandoId === venda.id ? (
+                            <Input
+                              value={editNomeComprador}
+                              onChange={(e) => setEditNomeComprador(e.target.value)}
+                              className="h-8"
+                            />
+                          ) : (
+                            venda.nome_comprador || "-"
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {editandoId === venda.id ? (
+                            <Input
+                              value={editValor}
+                              onChange={(e) => setEditValor(e.target.value)}
+                              className="h-8 text-right"
+                            />
+                          ) : (
+                            Number(venda.valor).toFixed(2)
+                          )}
+                        </TableCell>
+                        <TableCell className="space-x-2 text-right">
+                          {editandoId === venda.id ? (
+                            <>
+                              <Button size="sm" variant="outline" onClick={salvarEdicao}>
+                                Salvar
+                              </Button>
+                              <Button size="sm" variant="ghost" onClick={cancelarEdicao}>
+                                Cancelar
+                              </Button>
+                            </>
+                          ) : (
+                            <>
+                              <Button size="sm" variant="outline" onClick={() => iniciarEdicao(venda)}>
+                                Editar
+                              </Button>
+                              <Button size="sm" variant="destructive" onClick={() => excluirVenda(venda.id)}>
+                                Excluir
+                              </Button>
+                            </>
+                          )}
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
