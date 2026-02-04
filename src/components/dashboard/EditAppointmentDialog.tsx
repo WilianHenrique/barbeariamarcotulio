@@ -23,6 +23,7 @@ interface Agendamento {
   hora_final: string;
   servico: string;
   tempo_total_minutos: number;
+  desmarcado?: boolean;
 }
 
 interface EditAppointmentDialogProps {
@@ -88,6 +89,7 @@ export const EditAppointmentDialog = ({
   const [erroHorarioManual, setErroHorarioManual] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [showConfirmDelete, setShowConfirmDelete] = useState(false);
+  const [desmarcado, setDesmarcado] = useState(false);
 
   useEffect(() => {
     if (agendamento && open) {
@@ -100,8 +102,32 @@ export const EditAppointmentDialog = ({
       setHorarioManual(agendamento.hora_agendada);
       setErroHorarioManual("");
       setShowConfirmDelete(false);
+      setDesmarcado(!!agendamento.desmarcado);
     }
   }, [agendamento, open]);
+
+  const handleToggleDesmarcado = async () => {
+    if (!agendamento) return;
+
+    const next = !desmarcado;
+    setIsLoading(true);
+    try {
+      const { error } = await supabase
+        .from("agendamentos")
+        .update({ desmarcado: next })
+        .eq("id", agendamento.id);
+
+      if (error) throw error;
+      setDesmarcado(next);
+      toast.success(next ? "Agendamento marcado como desmarcado" : "Agendamento reativado");
+      onSuccess();
+    } catch (error: any) {
+      console.error("Erro ao atualizar status do agendamento:", error);
+      toast.error("Erro ao atualizar status");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const gerarHorariosDisponiveis = () => {
     const horarios: string[] = [];
@@ -226,6 +252,7 @@ export const EditAppointmentDialog = ({
           hora_agendada: horarioSelecionado,
           hora_final: format(datetimeEnd, 'HH:mm'),
           tempo_total_minutos: tempoServico,
+          desmarcado,
         })
         .eq('id', agendamento.id);
 
@@ -425,6 +452,39 @@ export const EditAppointmentDialog = ({
           {isPastAppointment && (
             <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-3 text-sm text-amber-500">
               Este agendamento já passou. Você pode editar, mas atenção para não alterar dados históricos sem necessidade.
+            </div>
+          )}
+
+          {/* Status: cliente não veio */}
+          {isPastAppointment && (
+            <div
+              className={cn(
+                "rounded-lg border p-4",
+                desmarcado
+                  ? "bg-amber-500/10 border-amber-500/20"
+                  : "bg-secondary/30 border-border"
+              )}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className={cn("text-sm font-medium", desmarcado ? "text-amber-400" : "text-foreground")}>
+                    {desmarcado ? "Agendamento desmarcado" : "Cliente não veio?"}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Ao marcar como desmarcado, este agendamento não entra no faturamento.
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  variant={desmarcado ? "default" : "outline"}
+                  size="sm"
+                  onClick={handleToggleDesmarcado}
+                  disabled={isLoading}
+                  className={desmarcado ? "bg-amber-500 text-background hover:bg-amber-500/90" : ""}
+                >
+                  {desmarcado ? "Reativar" : "Marcar desmarcado"}
+                </Button>
+              </div>
             </div>
           )}
 

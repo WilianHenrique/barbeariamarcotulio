@@ -37,6 +37,7 @@ interface Agendamento {
   tempo_total_minutos: number;
   notificacao_24h_enviada?: boolean | null;
   notificacao_1h_enviada?: boolean | null;
+  desmarcado?: boolean;
 }
 
 
@@ -432,17 +433,21 @@ export const ClientesList = ({ agendamentos, onRefresh }: ClientesListProps) => 
                     const futurosCliente = agendamentosCliente.filter((item) => new Date(item.datetime_start) >= agora);
                     const proximoId = futurosCliente[0]?.id;
 
-                    const statusLabel = isPast
-                      ? "concluído"
-                      : ag.id === proximoId
-                        ? "próximo"
-                        : "pendente";
+                    const statusLabel = ag.desmarcado
+                      ? "desmarcado"
+                      : isPast
+                        ? "concluído"
+                        : ag.id === proximoId
+                          ? "próximo"
+                          : "pendente";
 
-                    const badgeClass = isPast
-                      ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30"
-                      : ag.id === proximoId
-                        ? "bg-amber-500/10 text-amber-400 border-amber-500/30"
-                        : "bg-sky-500/10 text-sky-400 border-sky-500/30";
+                    const badgeClass = ag.desmarcado
+                      ? "bg-amber-500/10 text-amber-400 border-amber-500/30"
+                      : isPast
+                        ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30"
+                        : ag.id === proximoId
+                          ? "bg-amber-500/10 text-amber-400 border-amber-500/30"
+                          : "bg-sky-500/10 text-sky-400 border-sky-500/30";
 
                     return (
                       <div
