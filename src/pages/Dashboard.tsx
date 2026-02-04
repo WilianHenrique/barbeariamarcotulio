@@ -232,13 +232,15 @@ const Dashboard = () => {
             )}
           </div>
 
-          {/* Quick Stats */}
-          <QuickStats 
-            totalPendentes={agendamentosPendentes.length}
-            proximas24h={pendentesHoje}
-            realizados={agendamentosRealizadosHoje.length}
-            totalMes={totalMes}
-          />
+           {/* Quick Stats (não exibir em Vendas) */}
+           {activeTab !== "vendas" && (
+             <QuickStats 
+               totalPendentes={agendamentosPendentes.length}
+               proximas24h={pendentesHoje}
+               realizados={agendamentosRealizadosHoje.length}
+               totalMes={totalMes}
+             />
+           )}
 
           {/* Content based on active tab */}
           {activeTab === "agenda" && (
