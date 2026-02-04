@@ -232,8 +232,8 @@ const Dashboard = () => {
             )}
           </div>
 
-           {/* Quick Stats (não exibir em Vendas) */}
-           {activeTab !== "vendas" && (
+           {/* Quick Stats (não exibir em abas que não fazem sentido) */}
+           {!(["vendas", "mensagens", "pagamentos", "clientes"].includes(activeTab)) && (
              <QuickStats 
                totalPendentes={agendamentosPendentes.length}
                proximas24h={pendentesHoje}
