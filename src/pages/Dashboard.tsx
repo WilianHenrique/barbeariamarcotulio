@@ -37,6 +37,7 @@ interface Agendamento {
   notificacao_1h_enviada: boolean;
   evento_recorrente: string;
   link_evento: string;
+  desmarcado?: boolean;
 }
 
 const Dashboard = () => {
@@ -170,6 +171,7 @@ const Dashboard = () => {
   const agendamentosRealizadosHoje = agendamentosFiltrados.filter(a => {
     const dataEvento = new Date(a.datetime_start);
     return (
+      !a.desmarcado &&
       dataEvento < agora &&
       dataEvento.getDate() === agora.getDate() &&
       dataEvento.getMonth() === agora.getMonth() &&
@@ -181,7 +183,7 @@ const Dashboard = () => {
   const totalMes = agendamentos.filter(a => {
     const data = new Date(a.dia_agendado);
     const now = new Date();
-    return data.getMonth() === now.getMonth() && data.getFullYear() === now.getFullYear();
+    return !a.desmarcado && data.getMonth() === now.getMonth() && data.getFullYear() === now.getFullYear();
   }).length;
 
   const pendentesHoje = agendamentosPendentes.filter(a => {

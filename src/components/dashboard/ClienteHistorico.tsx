@@ -15,6 +15,7 @@ interface Agendamento {
   notificacao_24h_enviada: boolean;
   notificacao_1h_enviada: boolean;
   datetime_start: string;
+  desmarcado?: boolean;
 }
 
 interface HistoricoMensagem {
@@ -66,7 +67,7 @@ export const ClienteHistorico = ({ clienteNome, agendamentos }: ClienteHistorico
   const agora = new Date();
   const realizados = agendamentos.filter(a => {
     const dataEvento = new Date(a.datetime_start);
-    return dataEvento < agora && a.notificacao_24h_enviada && a.notificacao_1h_enviada;
+    return dataEvento < agora && !a.desmarcado && a.notificacao_24h_enviada && a.notificacao_1h_enviada;
   }).length;
 
   return (
@@ -137,7 +138,11 @@ export const ClienteHistorico = ({ clienteNome, agendamentos }: ClienteHistorico
                         </div>
                       </TableCell>
                       <TableCell>
-                        {jaAconteceu ? (
+                        {agendamento.desmarcado ? (
+                          <Badge variant="outline" className="bg-amber-500/10 text-amber-600 border-amber-500/20">
+                            Desmarcado
+                          </Badge>
+                        ) : jaAconteceu ? (
                           agendamento.notificacao_24h_enviada && agendamento.notificacao_1h_enviada ? (
                             <Badge variant="secondary" className="bg-green-500/10 text-green-600 border-green-500/20">Realizado</Badge>
                           ) : (

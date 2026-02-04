@@ -19,6 +19,7 @@ export type Database = {
           created_at: string
           datetime_end: string
           datetime_start: string
+          desmarcado: boolean
           dia_agendado: string
           dia_agendado_formatado: string
           enviar_notificacao_cobranca: boolean | null
@@ -45,6 +46,7 @@ export type Database = {
           created_at?: string
           datetime_end: string
           datetime_start: string
+          desmarcado?: boolean
           dia_agendado: string
           dia_agendado_formatado: string
           enviar_notificacao_cobranca?: boolean | null
@@ -71,6 +73,7 @@ export type Database = {
           created_at?: string
           datetime_end?: string
           datetime_start?: string
+          desmarcado?: boolean
           dia_agendado?: string
           dia_agendado_formatado?: string
           enviar_notificacao_cobranca?: boolean | null

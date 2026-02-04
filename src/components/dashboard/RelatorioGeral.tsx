@@ -13,6 +13,7 @@ interface Agendamento {
   servico: string;
   evento_recorrente: string;
   datetime_start: string;
+  desmarcado?: boolean;
 }
 
 interface Servico {
@@ -68,10 +69,12 @@ export const RelatorioGeral = ({ agendamentos }: RelatorioGeralProps) => {
     }
   };
 
+  const agendamentosValidos = agendamentos.filter((ag) => !ag.desmarcado);
+
   // Agrupa agendamentos por mês
   const agruparPorMes = () => {
     const meses: { [key: string]: number } = {};
-    agendamentos.forEach(ag => {
+    agendamentosValidos.forEach(ag => {
       const data = new Date(ag.dia_agendado);
       const mesAno = `${data.getMonth() + 1}/${data.getFullYear()}`;
       meses[mesAno] = (meses[mesAno] || 0) + 1;
@@ -89,7 +92,7 @@ export const RelatorioGeral = ({ agendamentos }: RelatorioGeralProps) => {
   // Agrupa serviços mais solicitados
   const servicosMaisSolicitados = () => {
     const servicos: { [key: string]: number } = {};
-    agendamentos.forEach(ag => {
+    agendamentosValidos.forEach(ag => {
       servicos[ag.servico] = (servicos[ag.servico] || 0) + 1;
     });
     return Object.entries(servicos)
@@ -101,7 +104,7 @@ export const RelatorioGeral = ({ agendamentos }: RelatorioGeralProps) => {
   // Calcula faturamento por período (dia/semana/mês)
   const calcularFaturamentoPorPeriodo = () => {
     const agora = new Date();
-    const agendamentosPassados = agendamentos.filter(ag => new Date(ag.datetime_start) < agora);
+    const agendamentosPassados = agendamentosValidos.filter(ag => new Date(ag.datetime_start) < agora);
     const vendasPassadas = vendas.filter(v => new Date(v.created_at) < agora);
     
     let dataInicio: Date;
