@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import { formatBRLInput, parseBRLToNumber } from "@/lib/currency";
 import {
   Pagination,
   PaginationContent,
@@ -73,7 +74,7 @@ export const Vendas = () => {
       return;
     }
 
-    const valorNumber = Number(valor.replace(",", "."));
+    const valorNumber = parseBRLToNumber(valor);
     if (!valorNumber || valorNumber <= 0) {
       toast.error("Informe um valor válido");
       return;
@@ -113,7 +114,13 @@ export const Vendas = () => {
   const iniciarEdicao = (venda: Venda) => {
     setEditandoId(venda.id);
     setEditDescricao(venda.descricao_produto);
-    setEditValor(String(venda.valor).replace(".", ","));
+    // garante 2 casas e formato pt-BR
+    setEditValor(
+      Number(venda.valor).toLocaleString("pt-BR", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      })
+    );
     setEditNomeComprador(venda.nome_comprador || "");
   };
 
@@ -132,7 +139,7 @@ export const Vendas = () => {
       return;
     }
 
-    const valorNumber = Number(editValor.replace(",", "."));
+    const valorNumber = parseBRLToNumber(editValor);
     if (!valorNumber || valorNumber <= 0) {
       toast.error("Informe um valor válido");
       return;
@@ -238,7 +245,12 @@ export const Vendas = () => {
                 id="valor"
                 placeholder="Ex: 49,90"
                 value={valor}
-                onChange={(e) => setValor(e.target.value)}
+                inputMode="numeric"
+                autoComplete="off"
+                onChange={(e) => {
+                  const next = e.target.value;
+                  setValor(next.trim() ? formatBRLInput(next) : "");
+                }}
               />
             </div>
             <div className="space-y-1.5">
@@ -325,7 +337,12 @@ export const Vendas = () => {
                           {editandoId === venda.id ? (
                             <Input
                               value={editValor}
-                              onChange={(e) => setEditValor(e.target.value)}
+                              inputMode="numeric"
+                              autoComplete="off"
+                              onChange={(e) => {
+                                const next = e.target.value;
+                                setEditValor(next.trim() ? formatBRLInput(next) : "");
+                              }}
                               className="h-8 text-right"
                             />
                           ) : (
