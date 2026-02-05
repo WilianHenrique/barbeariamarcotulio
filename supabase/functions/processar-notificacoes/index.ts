@@ -28,14 +28,21 @@ serve(async (req) => {
     );
 
     const agora = new Date();
-    
-    // Calcular janelas de tempo (de agora até 24h15min e até 1h15min no futuro)
-    // Adicionamos 15 minutos de margem para garantir que não perdemos notificações
-    const inicio24h = new Date(agora.getTime() + 23 * 60 * 60 * 1000 + 45 * 60 * 1000); // 23h45min
-    const fim24h = new Date(agora.getTime() + 24 * 60 * 60 * 1000 + 15 * 60 * 1000); // 24h15min
-    
-    const inicio1h = new Date(agora.getTime() + 45 * 60 * 1000); // 45min
-    const fim1h = new Date(agora.getTime() + 1 * 60 * 60 * 1000 + 15 * 60 * 1000); // 1h15min
+
+    // Janelas de tolerância: como o processamento roda em intervalos (ex.: a cada minuto),
+    // usamos uma janela pequena (±1 min) para garantir disparo no horário correto,
+    // sem adiantar notificações.
+    const TOLERANCIA_MS = 60 * 1000; // 1 minuto
+
+    // 24h antes
+    const alvo24h = new Date(agora.getTime() + 24 * 60 * 60 * 1000);
+    const inicio24h = new Date(alvo24h.getTime() - TOLERANCIA_MS);
+    const fim24h = new Date(alvo24h.getTime() + TOLERANCIA_MS);
+
+    // 1h antes
+    const alvo1h = new Date(agora.getTime() + 1 * 60 * 60 * 1000);
+    const inicio1h = new Date(alvo1h.getTime() - TOLERANCIA_MS);
+    const fim1h = new Date(alvo1h.getTime() + TOLERANCIA_MS);
 
     console.log(`Buscando notificações 24h entre ${inicio24h.toISOString()} e ${fim24h.toISOString()}`);
     console.log(`Buscando notificações 1h entre ${inicio1h.toISOString()} e ${fim1h.toISOString()}`);
