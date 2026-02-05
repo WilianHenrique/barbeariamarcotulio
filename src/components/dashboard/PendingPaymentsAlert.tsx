@@ -62,39 +62,40 @@ export function PendingPaymentsAlert({ enabled, nomeCliente, telefoneCliente }: 
         return;
       }
 
-      setLoading(true);
-      try {
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
-        if (!user) return;
+       setLoading(true);
+       setItems([]); // esconde qualquer alerta antigo enquanto consulta o cliente atual
+       try {
+         const {
+           data: { user },
+         } = await supabase.auth.getUser();
+         if (!user) return;
 
-        const nowIso = new Date().toISOString();
-        let query = supabase
-          .from("agendamentos")
-          .select("id, datetime_start, servico, valor_servico")
-          .eq("user_id", user.id)
-          .eq("pagamento_pendente", true)
-          .lt("datetime_start", nowIso)
-          .order("datetime_start", { ascending: false });
+         const nowIso = new Date().toISOString();
+         let query = supabase
+           .from("agendamentos")
+           .select("id, datetime_start, servico, valor_servico")
+           .eq("user_id", user.id)
+           .eq("pagamento_pendente", true)
+           .lt("datetime_start", nowIso)
+           .order("datetime_start", { ascending: false });
 
-        // Preferir telefone (identificador mais estável). Fallback para nome.
-        if (telefone.length >= 10) {
-          query = query.eq("telefone_cliente", telefone);
-        } else {
-          // tolerante a variações de espaçamento/case
-          query = query.ilike("nome_cliente", buildNameIlikePattern(nome));
-        }
+         // Preferir telefone (identificador mais estável). Fallback para nome.
+         if (telefone.length >= 10) {
+           query = query.eq("telefone_cliente", telefone);
+         } else {
+           // tolerante a variações de espaçamento/case
+           query = query.ilike("nome_cliente", buildNameIlikePattern(nome));
+         }
 
-        const { data, error } = await query;
+         const { data, error } = await query;
 
-        if (error) throw error;
-        if (!cancelled) setItems((data as PendingPaymentItem[]) || []);
-      } catch {
-        if (!cancelled) setItems([]);
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
+         if (error) throw error;
+         if (!cancelled) setItems((data as PendingPaymentItem[]) || []);
+       } catch {
+         if (!cancelled) setItems([]);
+       } finally {
+         if (!cancelled) setLoading(false);
+       }
     };
 
     const t = setTimeout(run, 300);
@@ -110,7 +111,8 @@ export function PendingPaymentsAlert({ enabled, nomeCliente, telefoneCliente }: 
   );
 
   if (!enabled) return null;
-  if (!loading && items.length === 0) return null;
+  // Não mostrar nada enquanto consulta; só renderiza se houver pendência.
+  if (loading || items.length === 0) return null;
 
   return (
     <Alert variant="destructive" className="bg-destructive/5 text-foreground">
