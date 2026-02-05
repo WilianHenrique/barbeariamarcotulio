@@ -62,14 +62,14 @@ const validarTelefone = (telefone: string) => {
   return numeros.length === 0 || numeros.length === 11;
 };
 
-const SERVICOS = [
-  { id: "barba", nome: "Barba", tempo: 30 },
-  { id: "cabelo", nome: "Cabelo", tempo: 45 },
-  { id: "sobrancelha", nome: "Sobrancelha", tempo: 15 },
-  { id: "barba_cabelo", nome: "Barba + Cabelo", tempo: 60 },
-  { id: "pezinho", nome: "Pezinho", tempo: 15 },
-  { id: "combo", nome: "Barba + Cabelo + Sobrancelha", tempo: 75 },
-];
+interface Servico {
+  id: string;
+  nome: string;
+  duracao_minutos: number;
+  ativo: boolean;
+  ordem: number;
+}
+
 
 export const EditAppointmentDialog = ({
   open,
@@ -90,6 +90,38 @@ export const EditAppointmentDialog = ({
   const [isLoading, setIsLoading] = useState(false);
   const [showConfirmDelete, setShowConfirmDelete] = useState(false);
   const [desmarcado, setDesmarcado] = useState(false);
+  const [servicos, setServicos] = useState<Servico[]>([]);
+  const [carregandoServicos, setCarregandoServicos] = useState(false);
+
+  useEffect(() => {
+    const carregarServicos = async () => {
+      if (!open) return;
+
+      setCarregandoServicos(true);
+      try {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+        if (!user) return;
+
+        const { data, error } = await supabase
+          .from("servicos")
+          .select("*")
+          .eq("user_id", user.id)
+          .eq("ativo", true)
+          .order("ordem");
+
+        if (error) throw error;
+        setServicos(data || []);
+      } catch (error) {
+        console.error("Erro ao carregar serviços:", error);
+      } finally {
+        setCarregandoServicos(false);
+      }
+    };
+
+    carregarServicos();
+  }, [open]);
 
   useEffect(() => {
     if (agendamento && open) {
@@ -328,25 +360,30 @@ export const EditAppointmentDialog = ({
               <Scissors className="h-4 w-4 text-primary" />
               Serviço
             </Label>
-            <div className="grid grid-cols-2 gap-2">
-              {SERVICOS.map((s) => (
-                <button
-                  key={s.id}
-                  onClick={() => { 
-                    setServico(s.nome); 
-                    setTempoServico(s.tempo); 
-                  }}
-                  className={cn(
-                    "p-2 rounded-lg border text-left transition-all text-sm",
-                    servico === s.nome
-                      ? "border-primary bg-primary/10 text-foreground"
-                      : "border-border bg-secondary/30 text-muted-foreground hover:border-border hover:bg-secondary/50"
-                  )}
-                >
-                  <span className="font-medium block text-xs">{s.nome}</span>
-                </button>
-              ))}
-            </div>
+            {carregandoServicos ? (
+              <div className="text-sm text-muted-foreground">Carregando serviços...</div>
+            ) : (
+              <div className="grid grid-cols-2 gap-2">
+                {servicos.map((s) => (
+                  <button
+                    key={s.id}
+                    onClick={() => {
+                      setServico(s.nome);
+                      setTempoServico(s.duracao_minutos);
+                    }}
+                    className={cn(
+                      "p-2 rounded-lg border text-left transition-all text-sm",
+                      servico === s.nome
+                        ? "border-primary bg-primary/10 text-foreground"
+                        : "border-border bg-secondary/30 text-muted-foreground hover:border-border hover:bg-secondary/50",
+                    )}
+                  >
+                    <span className="font-medium block text-xs">{s.nome}</span>
+                    <span className="text-[10px] text-muted-foreground">Duração sugerida: {s.duracao_minutos} min</span>
+                  </button>
+                ))}
+              </div>
+            )}
             
             {/* Serviço personalizado */}
             <Input
