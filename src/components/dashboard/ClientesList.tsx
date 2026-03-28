@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Search, User, Phone, Calendar, Edit, ChevronRight, MessageSquare, Clock, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { format, isSameWeek, isSameMonth, isSameYear, parse } from "date-fns";
+import { addWeeks, format, getDay, isSameMonth, isSameWeek, isSameYear, parse } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { EditAppointmentDialog } from "./EditAppointmentDialog";
 import {
@@ -38,7 +38,11 @@ interface Agendamento {
   notificacao_24h_enviada?: boolean | null;
   notificacao_1h_enviada?: boolean | null;
   desmarcado?: boolean;
+  evento_recorrente?: string;
+  link_evento?: string;
 }
+
+type TipoRecorrenciaEdicao = "semanal" | "personalizado";
 
 
 interface ClientesListProps {
@@ -74,6 +78,22 @@ export const ClientesList = ({ agendamentos, onRefresh }: ClientesListProps) => 
   const [loadingHistorico, setLoadingHistorico] = useState(false);
   const [selectedAgendamento, setSelectedAgendamento] = useState<Agendamento | null>(null);
   const [showEditAgendamento, setShowEditAgendamento] = useState(false);
+  const [showEditRecorrencia, setShowEditRecorrencia] = useState(false);
+  const [agendamentoSerieBase, setAgendamentoSerieBase] = useState<Agendamento | null>(null);
+  const [tipoRecorrenciaEdicao, setTipoRecorrenciaEdicao] = useState<TipoRecorrenciaEdicao>("semanal");
+  const [diasSemanaRecorrencia, setDiasSemanaRecorrencia] = useState<number[]>([]);
+  const [intervaloSemanasRecorrencia, setIntervaloSemanasRecorrencia] = useState(2);
+  const [isSavingRecorrencia, setIsSavingRecorrencia] = useState(false);
+
+  const diasSemana = [
+    { valor: 0, label: "Dom" },
+    { valor: 1, label: "Seg" },
+    { valor: 2, label: "Ter" },
+    { valor: 3, label: "Qua" },
+    { valor: 4, label: "Qui" },
+    { valor: 5, label: "Sex" },
+    { valor: 6, label: "Sáb" },
+  ];
 
   // Agrupa clientes únicos
   const clientes = useMemo(() => {
@@ -262,6 +282,145 @@ export const ClientesList = ({ agendamentos, onRefresh }: ClientesListProps) => 
     } catch (error) {
       console.error("Erro ao excluir cliente:", error);
       toast.error("Erro ao excluir cliente");
+    }
+  };
+
+  const toggleDiaSemanaRecorrencia = (dia: number) => {
+    setDiasSemanaRecorrencia((prev) =>
+      prev.includes(dia) ? prev.filter((d) => d !== dia) : [...prev, dia].sort((a, b) => a - b),
+    );
+  };
+
+  const handleOpenEditRecorrencia = (ag: Agendamento) => {
+    if (ag.evento_recorrente !== "Sim" || !ag.link_evento) {
+      toast.error("Este agendamento não faz parte de uma série recorrente.");
+      return;
+    }
+
+    const diaBase = getDay(new Date(ag.datetime_start));
+    setAgendamentoSerieBase(ag);
+    setTipoRecorrenciaEdicao("semanal");
+    setDiasSemanaRecorrencia([diaBase]);
+    setIntervaloSemanasRecorrencia(2);
+    setShowEditRecorrencia(true);
+  };
+
+  const gerarDatasRecorrencia = ({
+    dataBase,
+    quantidade,
+  }: {
+    dataBase: Date;
+    quantidade: number;
+  }) => {
+    const datas: Date[] = [];
+
+    if (quantidade <= 0) return datas;
+
+    if (tipoRecorrenciaEdicao === "semanal") {
+      if (diasSemanaRecorrencia.length === 0) return datas;
+
+      const cursor = new Date(dataBase);
+      const limiteMaximo = new Date(dataBase);
+      limiteMaximo.setFullYear(limiteMaximo.getFullYear() + 2);
+
+      while (cursor <= limiteMaximo && datas.length < quantidade) {
+        if (diasSemanaRecorrencia.includes(getDay(cursor))) {
+          datas.push(new Date(cursor));
+        }
+        cursor.setDate(cursor.getDate() + 1);
+      }
+
+      return datas;
+    }
+
+    const primeiroDia = diasSemanaRecorrencia[0] ?? getDay(dataBase);
+    const primeiraData = new Date(dataBase);
+    while (getDay(primeiraData) !== primeiroDia) {
+      primeiraData.setDate(primeiraData.getDate() + 1);
+    }
+
+    datas.push(new Date(primeiraData));
+    while (datas.length < quantidade) {
+      datas.push(addWeeks(datas[datas.length - 1], Math.max(1, intervaloSemanasRecorrencia)));
+    }
+
+    return datas;
+  };
+
+  const handleSalvarRecorrencia = async () => {
+    if (!agendamentoSerieBase?.link_evento || !selectedCliente) return;
+
+    if (diasSemanaRecorrencia.length === 0) {
+      toast.error("Selecione ao menos um dia da semana.");
+      return;
+    }
+
+    setIsSavingRecorrencia(true);
+
+    try {
+      const agora = new Date();
+      const futurosDaSerie = agendamentos
+        .filter(
+          (ag) =>
+            ag.link_evento === agendamentoSerieBase.link_evento &&
+            ag.nome_cliente.trim().toLowerCase() === selectedCliente.nome.trim().toLowerCase() &&
+            new Date(ag.datetime_start) >= agora,
+        )
+        .sort((a, b) => new Date(a.datetime_start).getTime() - new Date(b.datetime_start).getTime());
+
+      if (futurosDaSerie.length === 0) {
+        toast.error("Não há agendamentos futuros para alterar nesta série.");
+        return;
+      }
+
+      const dataBase = new Date(futurosDaSerie[0].datetime_start);
+      const novasDatas = gerarDatasRecorrencia({
+        dataBase,
+        quantidade: futurosDaSerie.length,
+      });
+
+      if (novasDatas.length < futurosDaSerie.length) {
+        toast.error("Não foi possível gerar todas as novas datas da recorrência.");
+        return;
+      }
+
+      await Promise.all(
+        futurosDaSerie.map(async (ag, index) => {
+          const dataOriginal = new Date(ag.datetime_start);
+          const novaDataBase = novasDatas[index];
+
+          const novoInicio = new Date(novaDataBase);
+          novoInicio.setHours(dataOriginal.getHours(), dataOriginal.getMinutes(), 0, 0);
+
+          const duracaoMinutos = ag.tempo_total_minutos || 30;
+          const novoFim = new Date(novoInicio.getTime() + duracaoMinutos * 60 * 1000);
+
+          const { error } = await supabase
+            .from("agendamentos")
+            .update({
+              datetime_start: novoInicio.toISOString(),
+              datetime_end: novoFim.toISOString(),
+              dia_agendado: format(novoInicio, "yyyy-MM-dd"),
+              dia_agendado_formatado: format(novoInicio, "dd 'de' MMMM 'de' yyyy", { locale: ptBR }),
+              hora_agendada: format(novoInicio, "HH:mm"),
+              hora_final: format(novoFim, "HH:mm"),
+              evento_recorrente: "Sim",
+            })
+            .eq("id", ag.id);
+
+          if (error) throw error;
+        }),
+      );
+
+      toast.success("Recorrência atualizada para os próximos agendamentos.");
+      setShowEditRecorrencia(false);
+      setAgendamentoSerieBase(null);
+      onRefresh();
+    } catch (error) {
+      console.error("Erro ao editar recorrência:", error);
+      toast.error("Erro ao atualizar a recorrência");
+    } finally {
+      setIsSavingRecorrencia(false);
     }
   };
 
@@ -478,6 +637,17 @@ export const ClientesList = ({ agendamentos, onRefresh }: ClientesListProps) => 
                           >
                             <Edit className="w-4 h-4" />
                           </Button>
+                          {ag.evento_recorrente === "Sim" && ag.link_evento && !isPast && (
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-7 w-7 text-muted-foreground hover:text-primary"
+                              onClick={() => handleOpenEditRecorrencia(ag)}
+                              title="Editar recorrência futura"
+                            >
+                              <Calendar className="w-4 h-4" />
+                            </Button>
+                          )}
                         </div>
                       </div>
                     );
@@ -584,6 +754,76 @@ export const ClientesList = ({ agendamentos, onRefresh }: ClientesListProps) => 
         onDelete={handleDeleteAgendamento}
         agendamentosExistentes={agendamentos}
       />
+
+      {/* Dialog para editar recorrência futura */}
+      <Dialog open={showEditRecorrencia} onOpenChange={setShowEditRecorrencia}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Editar recorrência futura</DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Tipo de recorrência</Label>
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant={tipoRecorrenciaEdicao === "semanal" ? "default" : "outline"}
+                  onClick={() => setTipoRecorrenciaEdicao("semanal")}
+                >
+                  Semanal
+                </Button>
+                <Button
+                  type="button"
+                  variant={tipoRecorrenciaEdicao === "personalizado" ? "default" : "outline"}
+                  onClick={() => setTipoRecorrenciaEdicao("personalizado")}
+                >
+                  Personalizado
+                </Button>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Dias da semana</Label>
+              <div className="grid grid-cols-4 gap-2">
+                {diasSemana.map((dia) => (
+                  <Button
+                    key={dia.valor}
+                    type="button"
+                    variant={diasSemanaRecorrencia.includes(dia.valor) ? "default" : "outline"}
+                    onClick={() => toggleDiaSemanaRecorrencia(dia.valor)}
+                    className="h-9"
+                  >
+                    {dia.label}
+                  </Button>
+                ))}
+              </div>
+            </div>
+
+            {tipoRecorrenciaEdicao === "personalizado" && (
+              <div className="space-y-2">
+                <Label>Repetir a cada X semanas</Label>
+                <Input
+                  type="number"
+                  min={1}
+                  max={8}
+                  value={intervaloSemanasRecorrencia}
+                  onChange={(e) => setIntervaloSemanasRecorrencia(Math.min(8, Math.max(1, Number(e.target.value) || 1)))}
+                />
+              </div>
+            )}
+
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setShowEditRecorrencia(false)} disabled={isSavingRecorrencia}>
+                Cancelar
+              </Button>
+              <Button onClick={handleSalvarRecorrencia} disabled={isSavingRecorrencia}>
+                {isSavingRecorrencia ? "Salvando..." : "Salvar recorrência"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
