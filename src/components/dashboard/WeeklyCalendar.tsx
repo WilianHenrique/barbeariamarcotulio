@@ -36,6 +36,8 @@ const CORES_SERVICOS: Record<string, { bg: string; text: string; border: string 
 };
 
 const DEFAULT_COR = { bg: "bg-primary/20", text: "text-primary", border: "border-l-primary" };
+const HORA_INICIAL_PADRAO = 7;
+const HORA_FINAL_PADRAO = 20;
 
 const getBrasiliaTime = () => {
   const now = new Date();
@@ -49,22 +51,31 @@ const getBrasiliaTime = () => {
 const gerarSlotsTempoSemanais = (agendamentos: Agendamento[]) => {
   // Coleta todos os horários de início dos agendamentos
   const horariosUsados = new Set<string>();
+  let menorMinuto = HORA_INICIAL_PADRAO * 60;
+  let maiorMinuto = HORA_FINAL_PADRAO * 60;
   
   agendamentos.forEach(ag => {
     const inicio = new Date(ag.datetime_start);
+    const fim = new Date(ag.datetime_end);
     const hora = inicio.getHours();
     const minuto = inicio.getMinutes();
+    const inicioMinutos = hora * 60 + minuto;
+    const fimMinutos = fim.getHours() * 60 + fim.getMinutes();
+
+    menorMinuto = Math.min(menorMinuto, inicioMinutos);
+    maiorMinuto = Math.max(maiorMinuto, fimMinutos);
     
     // Adiciona o horário exato do agendamento
-    if (hora >= 8 && hora < 20) {
-      horariosUsados.add(`${hora}:${minuto}`);
-    }
+    horariosUsados.add(`${hora}:${minuto}`);
   });
 
-  // Gera os slots base (de hora em hora, das 8h às 20h)
+  const horaInicial = Math.floor(menorMinuto / 60);
+  const horaFinal = Math.ceil(maiorMinuto / 60);
+
+  // Gera os slots base (de hora em hora, com expansão dinâmica quando necessário)
   const slots: { hora: number; minuto: number; label: string }[] = [];
   
-  for (let h = 8; h <= 20; h++) {
+  for (let h = horaInicial; h <= horaFinal; h++) {
     slots.push({ hora: h, minuto: 0, label: `${h.toString().padStart(2, '0')}:00` });
     
     // Se há agendamentos em :30 desta hora, adiciona o slot de 30 min
@@ -297,12 +308,16 @@ export const WeeklyCalendar = ({
               
               const currentHour = currentTime.getHours();
               const currentMinute = currentTime.getMinutes();
-              const isWithinSchedule = currentHour >= 8 && currentHour < 20;
+              const currentMinutos = currentHour * 60 + currentMinute;
+              const primeiroSlot = slotsHorarios[0];
+              const ultimoSlot = slotsHorarios[slotsHorarios.length - 1];
+              const inicioVisualizacao = primeiroSlot ? primeiroSlot.hora * 60 + primeiroSlot.minuto : HORA_INICIAL_PADRAO * 60;
+              const fimVisualizacao = ultimoSlot ? ultimoSlot.hora * 60 + ultimoSlot.minuto + 60 : (HORA_FINAL_PADRAO + 1) * 60;
+              const isWithinSchedule = currentMinutos >= inicioVisualizacao && currentMinutos <= fimVisualizacao;
               
               // Calcula posição da linha do tempo atual baseado nos slots (em pixels)
               let timeLinePositionPx = -1;
               if (isWithinSchedule) {
-                const currentMinutos = currentHour * 60 + currentMinute;
                 for (let i = 0; i < slotsHorarios.length; i++) {
                   const slot = slotsHorarios[i];
                   const slotMinutos = slot.hora * 60 + slot.minuto;
