@@ -284,7 +284,7 @@ export const AppointmentDialog = ({
 
   const gerarHorariosDisponiveis = () => {
     const horarios: string[] = [];
-    for (let hora = 8; hora <= 20; hora++) {
+    for (let hora = 7; hora <= 20; hora++) {
       for (let minuto = 0; minuto < 60; minuto += 15) {
         // Para as 20h, permite apenas o horário cheio 20:00
         if (hora === 20 && minuto > 0) continue;
