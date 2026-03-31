@@ -362,21 +362,37 @@ export const ClientesList = ({ agendamentos, onRefresh }: ClientesListProps) => 
       const dataCorte = new Date(
         Math.max(agora.getTime(), new Date(agendamentoSerieBase.datetime_start).getTime()),
       );
-      const futurosDaSerie = agendamentos
+      const serieOrdenada = agendamentos
         .filter(
           (ag) =>
             ag.link_evento === agendamentoSerieBase.link_evento &&
             ag.nome_cliente.trim().toLowerCase() === selectedCliente.nome.trim().toLowerCase() &&
-            new Date(ag.datetime_start) >= dataCorte,
+            !ag.desmarcado,
         )
         .sort((a, b) => new Date(a.datetime_start).getTime() - new Date(b.datetime_start).getTime());
+
+      const futurosDaSerie = serieOrdenada.filter(
+        (ag) => new Date(ag.datetime_start) >= dataCorte,
+      );
 
       if (futurosDaSerie.length === 0) {
         toast.error("Não há agendamentos futuros para alterar nesta série.");
         return;
       }
 
-      const dataBase = new Date(futurosDaSerie[0].datetime_start);
+      const ultimoAntesCorte = [...serieOrdenada]
+        .reverse()
+        .find((ag) => new Date(ag.datetime_start) < dataCorte);
+
+      const dataBase = ultimoAntesCorte
+        ? (() => {
+            const inicio = new Date(ultimoAntesCorte.datetime_start);
+            inicio.setHours(0, 0, 0, 0);
+            inicio.setDate(inicio.getDate() + 1);
+            return inicio;
+          })()
+        : new Date(futurosDaSerie[0].datetime_start);
+
       const novasDatas = gerarDatasRecorrencia({
         dataBase,
         quantidade: futurosDaSerie.length,
