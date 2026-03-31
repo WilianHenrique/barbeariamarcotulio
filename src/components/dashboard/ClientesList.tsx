@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -320,7 +320,7 @@ export const ClientesList = ({ agendamentos, onRefresh }: ClientesListProps) => 
     setShowEditRecorrencia(true);
   };
 
-  const construirAtualizacoesRecorrencia = () => {
+  const construirAtualizacoesRecorrencia = useCallback(() => {
     if (!agendamentoSerieBase?.link_evento || !selectedCliente) {
       return {
         erro: "Dados da série não encontrados.",
@@ -440,19 +440,19 @@ export const ClientesList = ({ agendamentos, onRefresh }: ClientesListProps) => 
       atualizacoes,
       conflitos,
     };
-  };
+  }, [
+    agendamentoSerieBase,
+    selectedCliente,
+    diasSemanaRecorrencia,
+    horaRecorrencia,
+    agendamentos,
+    tipoRecorrenciaEdicao,
+    intervaloSemanasRecorrencia,
+  ]);
 
   const validacaoRecorrencia = useMemo(
     () => construirAtualizacoesRecorrencia(),
-    [
-      agendamentoSerieBase,
-      selectedCliente,
-      diasSemanaRecorrencia,
-      tipoRecorrenciaEdicao,
-      intervaloSemanasRecorrencia,
-      horaRecorrencia,
-      agendamentos,
-    ],
+    [construirAtualizacoesRecorrencia],
   );
 
   const gerarDatasRecorrencia = ({
