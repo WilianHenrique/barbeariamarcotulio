@@ -446,8 +446,7 @@ export const ClientesList = ({ agendamentos, onRefresh }: ClientesListProps) => 
     diasSemanaRecorrencia,
     horaRecorrencia,
     agendamentos,
-    tipoRecorrenciaEdicao,
-    intervaloSemanasRecorrencia,
+    gerarDatasRecorrencia,
   ]);
 
   const validacaoRecorrencia = useMemo(
