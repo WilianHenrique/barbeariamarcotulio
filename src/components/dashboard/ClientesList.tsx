@@ -359,12 +359,15 @@ export const ClientesList = ({ agendamentos, onRefresh }: ClientesListProps) => 
 
     try {
       const agora = new Date();
+      const dataCorte = new Date(
+        Math.max(agora.getTime(), new Date(agendamentoSerieBase.datetime_start).getTime()),
+      );
       const futurosDaSerie = agendamentos
         .filter(
           (ag) =>
             ag.link_evento === agendamentoSerieBase.link_evento &&
             ag.nome_cliente.trim().toLowerCase() === selectedCliente.nome.trim().toLowerCase() &&
-            new Date(ag.datetime_start) >= agora,
+            new Date(ag.datetime_start) >= dataCorte,
         )
         .sort((a, b) => new Date(a.datetime_start).getTime() - new Date(b.datetime_start).getTime());
 
