@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -65,6 +65,19 @@ interface HistoricoMensagem {
   status: string;
 }
 
+interface AtualizacaoRecorrencia {
+  agendamento: Agendamento;
+  novoInicio: Date;
+  novoFim: Date;
+}
+
+interface ConflitoRecorrencia {
+  agendamentoSerie: Agendamento;
+  agendamentoConflito: Agendamento;
+  novoInicio: Date;
+  novoFim: Date;
+}
+
 export const ClientesList = ({ agendamentos, onRefresh }: ClientesListProps) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCliente, setSelectedCliente] = useState<Cliente | null>(null);
@@ -83,6 +96,7 @@ export const ClientesList = ({ agendamentos, onRefresh }: ClientesListProps) => 
   const [tipoRecorrenciaEdicao, setTipoRecorrenciaEdicao] = useState<TipoRecorrenciaEdicao>("semanal");
   const [diasSemanaRecorrencia, setDiasSemanaRecorrencia] = useState<number[]>([]);
   const [intervaloSemanasRecorrencia, setIntervaloSemanasRecorrencia] = useState(2);
+  const [horaRecorrencia, setHoraRecorrencia] = useState("08:00");
   const [isSavingRecorrencia, setIsSavingRecorrencia] = useState(false);
 
   const diasSemana = [
@@ -302,10 +316,11 @@ export const ClientesList = ({ agendamentos, onRefresh }: ClientesListProps) => 
     setTipoRecorrenciaEdicao("semanal");
     setDiasSemanaRecorrencia([diaBase]);
     setIntervaloSemanasRecorrencia(2);
+    setHoraRecorrencia(format(new Date(ag.datetime_start), "HH:mm"));
     setShowEditRecorrencia(true);
   };
 
-  const gerarDatasRecorrencia = ({
+  const gerarDatasRecorrencia = useCallback(({
     dataBase,
     quantidade,
   }: {
@@ -345,74 +360,160 @@ export const ClientesList = ({ agendamentos, onRefresh }: ClientesListProps) => 
     }
 
     return datas;
-  };
+  }, [tipoRecorrenciaEdicao, diasSemanaRecorrencia, intervaloSemanasRecorrencia]);
+
+  const construirAtualizacoesRecorrencia = useCallback(() => {
+    if (!agendamentoSerieBase?.link_evento || !selectedCliente) {
+      return {
+        erro: "Dados da série não encontrados.",
+        atualizacoes: [] as AtualizacaoRecorrencia[],
+        conflitos: [] as ConflitoRecorrencia[],
+      };
+    }
+
+    if (diasSemanaRecorrencia.length === 0) {
+      return {
+        erro: "Selecione ao menos um dia da semana.",
+        atualizacoes: [] as AtualizacaoRecorrencia[],
+        conflitos: [] as ConflitoRecorrencia[],
+      };
+    }
+
+    const [hora, minuto] = horaRecorrencia.split(":").map(Number);
+    if (!Number.isFinite(hora) || !Number.isFinite(minuto) || hora < 0 || hora > 23 || minuto < 0 || minuto > 59) {
+      return {
+        erro: "Defina um horário válido para a recorrência.",
+        atualizacoes: [] as AtualizacaoRecorrencia[],
+        conflitos: [] as ConflitoRecorrencia[],
+      };
+    }
+
+    const agora = new Date();
+    const dataCorte = new Date(
+      Math.max(agora.getTime(), new Date(agendamentoSerieBase.datetime_start).getTime()),
+    );
+    const serieOrdenada = agendamentos
+      .filter(
+        (ag) =>
+          ag.link_evento === agendamentoSerieBase.link_evento &&
+          ag.nome_cliente.trim().toLowerCase() === selectedCliente.nome.trim().toLowerCase() &&
+          !ag.desmarcado,
+      )
+      .sort((a, b) => new Date(a.datetime_start).getTime() - new Date(b.datetime_start).getTime());
+
+    const futurosDaSerie = serieOrdenada.filter(
+      (ag) => new Date(ag.datetime_start) >= dataCorte,
+    );
+
+    if (futurosDaSerie.length === 0) {
+      return {
+        erro: "Não há agendamentos futuros para alterar nesta série.",
+        atualizacoes: [] as AtualizacaoRecorrencia[],
+        conflitos: [] as ConflitoRecorrencia[],
+      };
+    }
+
+    const ultimoAntesCorte = [...serieOrdenada]
+      .reverse()
+      .find((ag) => new Date(ag.datetime_start) < dataCorte);
+
+    const dataBase = ultimoAntesCorte
+      ? (() => {
+          const inicio = new Date(ultimoAntesCorte.datetime_start);
+          inicio.setHours(0, 0, 0, 0);
+          inicio.setDate(inicio.getDate() + 1);
+          return inicio;
+        })()
+      : new Date(futurosDaSerie[0].datetime_start);
+
+    const novasDatas = gerarDatasRecorrencia({
+      dataBase,
+      quantidade: futurosDaSerie.length,
+    });
+
+    if (novasDatas.length < futurosDaSerie.length) {
+      return {
+        erro: "Não foi possível gerar todas as novas datas da recorrência.",
+        atualizacoes: [] as AtualizacaoRecorrencia[],
+        conflitos: [] as ConflitoRecorrencia[],
+      };
+    }
+
+    const atualizacoes = futurosDaSerie.map((ag, index) => {
+      const novaDataBase = novasDatas[index];
+      const novoInicio = new Date(novaDataBase);
+      novoInicio.setHours(hora, minuto, 0, 0);
+
+      const duracaoMinutos = ag.tempo_total_minutos || 30;
+      const novoFim = new Date(novoInicio.getTime() + duracaoMinutos * 60 * 1000);
+
+      return {
+        agendamento: ag,
+        novoInicio,
+        novoFim,
+      };
+    });
+
+    const idsQueSeraoMovidos = new Set(atualizacoes.map((item) => item.agendamento.id));
+    const conflitos: ConflitoRecorrencia[] = [];
+
+    atualizacoes.forEach((item) => {
+      agendamentos.forEach((agExistente) => {
+        if (agExistente.desmarcado || idsQueSeraoMovidos.has(agExistente.id)) return;
+
+        const inicioExistente = new Date(agExistente.datetime_start);
+        const fimExistente = new Date(agExistente.datetime_end);
+
+        const temSobreposicao = item.novoInicio < fimExistente && item.novoFim > inicioExistente;
+
+        if (temSobreposicao) {
+          conflitos.push({
+            agendamentoSerie: item.agendamento,
+            agendamentoConflito: agExistente,
+            novoInicio: item.novoInicio,
+            novoFim: item.novoFim,
+          });
+        }
+      });
+    });
+
+    return {
+      erro: null,
+      atualizacoes,
+      conflitos,
+    };
+  }, [
+    agendamentoSerieBase,
+    selectedCliente,
+    diasSemanaRecorrencia,
+    horaRecorrencia,
+    agendamentos,
+    gerarDatasRecorrencia,
+  ]);
+
+  const validacaoRecorrencia = useMemo(
+    () => construirAtualizacoesRecorrencia(),
+    [construirAtualizacoesRecorrencia],
+  );
 
   const handleSalvarRecorrencia = async () => {
     if (!agendamentoSerieBase?.link_evento || !selectedCliente) return;
 
-    if (diasSemanaRecorrencia.length === 0) {
-      toast.error("Selecione ao menos um dia da semana.");
+    if (validacaoRecorrencia.erro) {
+      toast.error(validacaoRecorrencia.erro);
+      return;
+    }
+
+    if (validacaoRecorrencia.conflitos.length > 0) {
+      toast.error("Existem conflitos de horário. Ajuste dia/horário antes de salvar.");
       return;
     }
 
     setIsSavingRecorrencia(true);
 
     try {
-      const agora = new Date();
-      const dataCorte = new Date(
-        Math.max(agora.getTime(), new Date(agendamentoSerieBase.datetime_start).getTime()),
-      );
-      const serieOrdenada = agendamentos
-        .filter(
-          (ag) =>
-            ag.link_evento === agendamentoSerieBase.link_evento &&
-            ag.nome_cliente.trim().toLowerCase() === selectedCliente.nome.trim().toLowerCase() &&
-            !ag.desmarcado,
-        )
-        .sort((a, b) => new Date(a.datetime_start).getTime() - new Date(b.datetime_start).getTime());
-
-      const futurosDaSerie = serieOrdenada.filter(
-        (ag) => new Date(ag.datetime_start) >= dataCorte,
-      );
-
-      if (futurosDaSerie.length === 0) {
-        toast.error("Não há agendamentos futuros para alterar nesta série.");
-        return;
-      }
-
-      const ultimoAntesCorte = [...serieOrdenada]
-        .reverse()
-        .find((ag) => new Date(ag.datetime_start) < dataCorte);
-
-      const dataBase = ultimoAntesCorte
-        ? (() => {
-            const inicio = new Date(ultimoAntesCorte.datetime_start);
-            inicio.setHours(0, 0, 0, 0);
-            inicio.setDate(inicio.getDate() + 1);
-            return inicio;
-          })()
-        : new Date(futurosDaSerie[0].datetime_start);
-
-      const novasDatas = gerarDatasRecorrencia({
-        dataBase,
-        quantidade: futurosDaSerie.length,
-      });
-
-      if (novasDatas.length < futurosDaSerie.length) {
-        toast.error("Não foi possível gerar todas as novas datas da recorrência.");
-        return;
-      }
-
       await Promise.all(
-        futurosDaSerie.map(async (ag, index) => {
-          const dataOriginal = new Date(ag.datetime_start);
-          const novaDataBase = novasDatas[index];
-
-          const novoInicio = new Date(novaDataBase);
-          novoInicio.setHours(dataOriginal.getHours(), dataOriginal.getMinutes(), 0, 0);
-
-          const duracaoMinutos = ag.tempo_total_minutos || 30;
-          const novoFim = new Date(novoInicio.getTime() + duracaoMinutos * 60 * 1000);
+        validacaoRecorrencia.atualizacoes.map(async ({ agendamento, novoInicio, novoFim }) => {
 
           const { error } = await supabase
             .from("agendamentos")
@@ -425,7 +526,7 @@ export const ClientesList = ({ agendamentos, onRefresh }: ClientesListProps) => 
               hora_final: format(novoFim, "HH:mm"),
               evento_recorrente: "Sim",
             })
-            .eq("id", ag.id);
+            .eq("id", agendamento.id);
 
           if (error) throw error;
         }),
@@ -832,11 +933,62 @@ export const ClientesList = ({ agendamentos, onRefresh }: ClientesListProps) => 
               </div>
             )}
 
+            <div className="space-y-2">
+              <Label>Horário para os próximos agendamentos</Label>
+              <Input
+                type="time"
+                step={900}
+                value={horaRecorrencia}
+                onChange={(e) => setHoraRecorrencia(e.target.value)}
+              />
+            </div>
+
+            {validacaoRecorrencia.erro && (
+              <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+                {validacaoRecorrencia.erro}
+              </div>
+            )}
+
+            {validacaoRecorrencia.conflitos.length > 0 && (
+              <div className="space-y-2 rounded-lg border border-destructive/40 bg-destructive/10 p-3">
+                <p className="text-sm font-medium text-destructive">
+                  Conflitos encontrados ({validacaoRecorrencia.conflitos.length})
+                </p>
+                <div className="max-h-40 space-y-2 overflow-y-auto pr-1">
+                  {validacaoRecorrencia.conflitos.map((conflito, index) => (
+                    <div key={`${conflito.agendamentoSerie.id}-${conflito.agendamentoConflito.id}-${index}`} className="rounded-md border border-destructive/30 bg-background/80 p-2 text-xs space-y-1">
+                      <p className="text-foreground">
+                        Novo horário da série: {format(conflito.novoInicio, "dd/MM/yyyy HH:mm")} - {format(conflito.novoFim, "HH:mm")}
+                      </p>
+                      <p className="text-muted-foreground">
+                        Já ocupado por {conflito.agendamentoConflito.nome_cliente} ({conflito.agendamentoConflito.servico}) em {format(new Date(conflito.agendamentoConflito.datetime_start), "dd/MM/yyyy HH:mm")}
+                      </p>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setSelectedAgendamento(conflito.agendamentoConflito);
+                          setShowEditRecorrencia(false);
+                          setShowEditAgendamento(true);
+                        }}
+                      >
+                        Ajustar agendamento em conflito
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Ajuste os dias/horário acima ou edite os agendamentos em conflito antes de salvar.
+                </p>
+              </div>
+            )}
+
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setShowEditRecorrencia(false)} disabled={isSavingRecorrencia}>
                 Cancelar
               </Button>
-              <Button onClick={handleSalvarRecorrencia} disabled={isSavingRecorrencia}>
+              <Button onClick={handleSalvarRecorrencia} disabled={isSavingRecorrencia || !!validacaoRecorrencia.erro || validacaoRecorrencia.conflitos.length > 0}>
                 {isSavingRecorrencia ? "Salvando..." : "Salvar recorrência"}
               </Button>
             </div>
