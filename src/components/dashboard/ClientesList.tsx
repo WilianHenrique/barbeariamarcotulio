@@ -320,6 +320,48 @@ export const ClientesList = ({ agendamentos, onRefresh }: ClientesListProps) => 
     setShowEditRecorrencia(true);
   };
 
+  const gerarDatasRecorrencia = useCallback(({
+    dataBase,
+    quantidade,
+  }: {
+    dataBase: Date;
+    quantidade: number;
+  }) => {
+    const datas: Date[] = [];
+
+    if (quantidade <= 0) return datas;
+
+    if (tipoRecorrenciaEdicao === "semanal") {
+      if (diasSemanaRecorrencia.length === 0) return datas;
+
+      const cursor = new Date(dataBase);
+      const limiteMaximo = new Date(dataBase);
+      limiteMaximo.setFullYear(limiteMaximo.getFullYear() + 2);
+
+      while (cursor <= limiteMaximo && datas.length < quantidade) {
+        if (diasSemanaRecorrencia.includes(getDay(cursor))) {
+          datas.push(new Date(cursor));
+        }
+        cursor.setDate(cursor.getDate() + 1);
+      }
+
+      return datas;
+    }
+
+    const primeiroDia = diasSemanaRecorrencia[0] ?? getDay(dataBase);
+    const primeiraData = new Date(dataBase);
+    while (getDay(primeiraData) !== primeiroDia) {
+      primeiraData.setDate(primeiraData.getDate() + 1);
+    }
+
+    datas.push(new Date(primeiraData));
+    while (datas.length < quantidade) {
+      datas.push(addWeeks(datas[datas.length - 1], Math.max(1, intervaloSemanasRecorrencia)));
+    }
+
+    return datas;
+  }, [tipoRecorrenciaEdicao, diasSemanaRecorrencia, intervaloSemanasRecorrencia]);
+
   const construirAtualizacoesRecorrencia = useCallback(() => {
     if (!agendamentoSerieBase?.link_evento || !selectedCliente) {
       return {
@@ -453,48 +495,6 @@ export const ClientesList = ({ agendamentos, onRefresh }: ClientesListProps) => 
     () => construirAtualizacoesRecorrencia(),
     [construirAtualizacoesRecorrencia],
   );
-
-  const gerarDatasRecorrencia = ({
-    dataBase,
-    quantidade,
-  }: {
-    dataBase: Date;
-    quantidade: number;
-  }) => {
-    const datas: Date[] = [];
-
-    if (quantidade <= 0) return datas;
-
-    if (tipoRecorrenciaEdicao === "semanal") {
-      if (diasSemanaRecorrencia.length === 0) return datas;
-
-      const cursor = new Date(dataBase);
-      const limiteMaximo = new Date(dataBase);
-      limiteMaximo.setFullYear(limiteMaximo.getFullYear() + 2);
-
-      while (cursor <= limiteMaximo && datas.length < quantidade) {
-        if (diasSemanaRecorrencia.includes(getDay(cursor))) {
-          datas.push(new Date(cursor));
-        }
-        cursor.setDate(cursor.getDate() + 1);
-      }
-
-      return datas;
-    }
-
-    const primeiroDia = diasSemanaRecorrencia[0] ?? getDay(dataBase);
-    const primeiraData = new Date(dataBase);
-    while (getDay(primeiraData) !== primeiroDia) {
-      primeiraData.setDate(primeiraData.getDate() + 1);
-    }
-
-    datas.push(new Date(primeiraData));
-    while (datas.length < quantidade) {
-      datas.push(addWeeks(datas[datas.length - 1], Math.max(1, intervaloSemanasRecorrencia)));
-    }
-
-    return datas;
-  };
 
   const handleSalvarRecorrencia = async () => {
     if (!agendamentoSerieBase?.link_evento || !selectedCliente) return;
