@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar, Clock, User, Scissors, Phone, Pencil, Check, ChevronDown, Repeat } from "lucide-react";
-import { format, isSameDay, isBefore, addWeeks, addMonths, addYears, startOfDay, endOfMonth, getDay, isSameWeek } from "date-fns";
+import { format, isSameDay, isBefore, addWeeks, addMonths, addDays, addYears, startOfDay, endOfMonth, getDay, isSameWeek } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
