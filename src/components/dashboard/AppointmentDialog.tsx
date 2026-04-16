@@ -173,7 +173,9 @@ export const AppointmentDialog = ({
       setDataSelecionada(new Date());
       setTipoRecorrencia("unico");
       setRecorrenciaPersonalizada(2);
+      setRecorrenciaDias(15);
       setDiasSemanaSelecionados([]);
+      setConflitosDias([]);
     }
   }, [open]);
 
