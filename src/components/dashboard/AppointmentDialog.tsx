@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar, Clock, User, Scissors, Phone, Pencil, Check, ChevronDown, Repeat } from "lucide-react";
-import { format, isSameDay, isBefore, addWeeks, addMonths, addYears, startOfDay, endOfMonth, getDay, isSameWeek } from "date-fns";
+import { format, isSameDay, isBefore, addWeeks, addMonths, addDays, addYears, startOfDay, endOfMonth, getDay, isSameWeek } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -37,7 +37,18 @@ interface Servico {
   ordem: number;
 }
 
-type RecorrenciaType = "unico" | "semanal" | "mensal" | "personalizado";
+type RecorrenciaType = "unico" | "semanal" | "mensal" | "personalizado" | "dias";
+
+interface AgendamentoConflitoDia {
+  data: Date;
+  diaSemana: string;
+  motivo: "domingo" | "segunda";
+  novaData: Date | null;
+  novoHorario: string | null;
+  removido: boolean;
+}
+
+const NOMES_DIAS = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
 
 const formatarTelefone = (value: string) => {
   let numeros = value.replace(/\D/g, "");
@@ -105,7 +116,9 @@ export const AppointmentDialog = ({
   const [erroHorarioManual, setErroHorarioManual] = useState("");
   const [tipoRecorrencia, setTipoRecorrencia] = useState<RecorrenciaType>("unico");
   const [recorrenciaPersonalizada, setRecorrenciaPersonalizada] = useState(2);
+  const [recorrenciaDias, setRecorrenciaDias] = useState(15);
   const [diasSemanaSelecionados, setDiasSemanaSelecionados] = useState<number[]>([]);
+  const [conflitosdias, setConflitosDias] = useState<AgendamentoConflitoDia[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [carregandoServicos, setCarregandoServicos] = useState(false);
   const sugestoesRef = useRef<HTMLDivElement | null>(null);
@@ -160,7 +173,9 @@ export const AppointmentDialog = ({
       setDataSelecionada(new Date());
       setTipoRecorrencia("unico");
       setRecorrenciaPersonalizada(2);
+      setRecorrenciaDias(15);
       setDiasSemanaSelecionados([]);
+      setConflitosDias([]);
     }
   }, [open]);
 
@@ -325,6 +340,44 @@ export const AppointmentDialog = ({
     return servicoSelecionado?.nome || "";
   };
 
+  // Gera datas para "a cada X dias" e detecta conflitos com dias fechados
+  const gerarDatasRecorrenciaDias = (): { datas: Date[]; conflitos: AgendamentoConflitoDia[] } => {
+    const datas: Date[] = [];
+    const conflitos: AgendamentoConflitoDia[] = [];
+    const inicioSerie = startOfDay(dataSelecionada);
+    const limiteSerie = addYears(inicioSerie, 1);
+
+    datas.push(new Date(dataSelecionada));
+    let dataCursor = addDays(inicioSerie, recorrenciaDias);
+
+    while (dataCursor <= limiteSerie) {
+      const diaSemana = getDay(dataCursor);
+      if (diaSemana === 0 || diaSemana === 1) {
+        conflitos.push({
+          data: new Date(dataCursor),
+          diaSemana: NOMES_DIAS[diaSemana],
+          motivo: diaSemana === 0 ? "domingo" : "segunda",
+          novaData: null,
+          novoHorario: null,
+          removido: false,
+        });
+      }
+      datas.push(new Date(dataCursor));
+      dataCursor = addDays(dataCursor, recorrenciaDias);
+    }
+
+    return { datas, conflitos };
+  };
+
+  const handlePreviewDias = () => {
+    const { conflitos } = gerarDatasRecorrenciaDias();
+    setConflitosDias(conflitos);
+  };
+
+  const atualizarConflitoDia = (index: number, campo: Partial<AgendamentoConflitoDia>) => {
+    setConflitosDias(prev => prev.map((c, i) => i === index ? { ...c, ...campo } : c));
+  };
+
   const criarAgendamento = async () => {
     const nomeServico = getNomeServico();
     if (!nomeCliente || !nomeServico || !horarioSelecionado) {
@@ -348,6 +401,15 @@ export const AppointmentDialog = ({
       return;
     }
 
+    // Validação de conflitos de dias fechados
+    if (tipoRecorrencia === "dias") {
+      const conflitosNaoResolvidos = conflitosdias.filter(c => !c.removido && !c.novaData);
+      if (conflitosNaoResolvidos.length > 0) {
+        toast.error("Resolva todos os conflitos de dias fechados antes de salvar.");
+        return;
+      }
+    }
+
     setIsLoading(true);
 
     try {
@@ -356,101 +418,110 @@ export const AppointmentDialog = ({
       } = await supabase.auth.getUser();
       if (!user) return;
 
-      const datasParaAgendar: Date[] = [];
+      const datasParaAgendar: { data: Date; horario: string }[] = [];
       const inicioSerie = startOfDay(dataSelecionada);
       const limiteSerie = addYears(inicioSerie, 1);
 
-      // Sempre adiciona o primeiro agendamento exatamente na data selecionada
-      datasParaAgendar.push(new Date(dataSelecionada));
+      if (tipoRecorrencia === "dias") {
+        // Primeiro agendamento na data selecionada
+        datasParaAgendar.push({ data: new Date(dataSelecionada), horario: horarioSelecionado });
 
-      console.log(
-        "criarAgendamento - tipoRecorrencia:",
-        tipoRecorrencia,
-        "diasSemanaSelecionados:",
-        diasSemanaSelecionados,
-        "dataSelecionada weekday:",
-        getDay(dataSelecionada),
-      );
-
-      if (tipoRecorrencia === "semanal") {
-        const diasSemana = diasSemanaSelecionados;
-
-        // Começa a partir do dia seguinte ao primeiro agendamento
-        let dataCursor = new Date(inicioSerie);
-        dataCursor.setDate(dataCursor.getDate() + 1);
+        let dataCursor = addDays(inicioSerie, recorrenciaDias);
+        let conflitoIdx = 0;
 
         while (dataCursor <= limiteSerie) {
-          const mesmoDiaSemana = diasSemana.includes(getDay(dataCursor));
-          const mesmaSemanaDoPrimeiro = isSameWeek(dataCursor, dataSelecionada, { weekStartsOn: 1 });
-
-          if (mesmoDiaSemana && !mesmaSemanaDoPrimeiro) {
-            datasParaAgendar.push(new Date(dataCursor));
-          }
-          dataCursor.setDate(dataCursor.getDate() + 1);
-        }
-      } else if (tipoRecorrencia === "mensal") {
-        const diasSemana = diasSemanaSelecionados;
-
-        let dataMesBase = new Date(inicioSerie);
-
-        while (dataMesBase <= limiteSerie) {
-          diasSemana.forEach((diaSemana) => {
-            const primeiroDiaMes = new Date(
-              dataMesBase.getFullYear(),
-              dataMesBase.getMonth(),
-              1,
-            );
-
-            let diaAtual = new Date(primeiroDiaMes);
-            // Avança até o primeiro dia do mês que bate com o dia da semana escolhido
-            while (getDay(diaAtual) !== diaSemana) {
-              diaAtual.setDate(diaAtual.getDate() + 1);
-            }
-
-            while (diaAtual.getMonth() === dataMesBase.getMonth() && diaAtual <= limiteSerie) {
-              // Só adiciona datas iguais ou posteriores ao primeiro agendamento
-              if (diaAtual >= inicioSerie) {
-                datasParaAgendar.push(new Date(diaAtual));
+          const diaSemana = getDay(dataCursor);
+          if (diaSemana === 0 || diaSemana === 1) {
+            // Procurar o conflito correspondente
+            const conflito = conflitosdias[conflitoIdx];
+            conflitoIdx++;
+            if (conflito) {
+              if (conflito.removido) {
+                dataCursor = addDays(dataCursor, recorrenciaDias);
+                continue;
               }
-              diaAtual.setDate(diaAtual.getDate() + 7);
+              if (conflito.novaData) {
+                datasParaAgendar.push({
+                  data: new Date(conflito.novaData),
+                  horario: conflito.novoHorario || horarioSelecionado,
+                });
+                dataCursor = addDays(dataCursor, recorrenciaDias);
+                continue;
+              }
             }
-          });
-
-          dataMesBase = addMonths(dataMesBase, 1);
+          }
+          datasParaAgendar.push({ data: new Date(dataCursor), horario: horarioSelecionado });
+          dataCursor = addDays(dataCursor, recorrenciaDias);
         }
-      } else if (tipoRecorrencia === "personalizado") {
-        const diaSemanaAlvo = diasSemanaSelecionados.length > 0 ? diasSemanaSelecionados[0] : null;
-        
-        let dataCursor = new Date(inicioSerie);
-        
-        // Se um dia da semana foi selecionado, ajustar a primeira data para esse dia
-        if (diaSemanaAlvo !== null) {
-          const diaAtual = dataCursor.getDay();
-          let diff = diaSemanaAlvo - diaAtual;
-          if (diff <= 0) diff += 7;
-          dataCursor.setDate(dataCursor.getDate() + diff);
-          // A primeira ocorrência no dia selecionado
-          datasParaAgendar.push(new Date(dataCursor));
-          dataCursor = addWeeks(dataCursor, recorrenciaPersonalizada);
-        } else {
-          dataCursor = addWeeks(dataCursor, recorrenciaPersonalizada);
-        }
+      } else {
+        // Sempre adiciona o primeiro agendamento exatamente na data selecionada
+        datasParaAgendar.push({ data: new Date(dataSelecionada), horario: horarioSelecionado });
 
-        while (dataCursor <= limiteSerie) {
-          datasParaAgendar.push(new Date(dataCursor));
-          dataCursor = addWeeks(dataCursor, recorrenciaPersonalizada);
+        if (tipoRecorrencia === "semanal") {
+          const diasSemana = diasSemanaSelecionados;
+          let dataCursor = new Date(inicioSerie);
+          dataCursor.setDate(dataCursor.getDate() + 1);
+
+          while (dataCursor <= limiteSerie) {
+            const mesmoDiaSemana = diasSemana.includes(getDay(dataCursor));
+            const mesmaSemanaDoPrimeiro = isSameWeek(dataCursor, dataSelecionada, { weekStartsOn: 1 });
+
+            if (mesmoDiaSemana && !mesmaSemanaDoPrimeiro) {
+              datasParaAgendar.push({ data: new Date(dataCursor), horario: horarioSelecionado });
+            }
+            dataCursor.setDate(dataCursor.getDate() + 1);
+          }
+        } else if (tipoRecorrencia === "mensal") {
+          const diasSemana = diasSemanaSelecionados;
+          let dataMesBase = new Date(inicioSerie);
+
+          while (dataMesBase <= limiteSerie) {
+            diasSemana.forEach((diaSemana) => {
+              const primeiroDiaMes = new Date(dataMesBase.getFullYear(), dataMesBase.getMonth(), 1);
+              let diaAtual = new Date(primeiroDiaMes);
+              while (getDay(diaAtual) !== diaSemana) {
+                diaAtual.setDate(diaAtual.getDate() + 1);
+              }
+
+              while (diaAtual.getMonth() === dataMesBase.getMonth() && diaAtual <= limiteSerie) {
+                if (diaAtual >= inicioSerie) {
+                  datasParaAgendar.push({ data: new Date(diaAtual), horario: horarioSelecionado });
+                }
+                diaAtual.setDate(diaAtual.getDate() + 7);
+              }
+            });
+            dataMesBase = addMonths(dataMesBase, 1);
+          }
+        } else if (tipoRecorrencia === "personalizado") {
+          const diaSemanaAlvo = diasSemanaSelecionados.length > 0 ? diasSemanaSelecionados[0] : null;
+          let dataCursor = new Date(inicioSerie);
+          
+          if (diaSemanaAlvo !== null) {
+            const diaAtual = dataCursor.getDay();
+            let diff = diaSemanaAlvo - diaAtual;
+            if (diff <= 0) diff += 7;
+            dataCursor.setDate(dataCursor.getDate() + diff);
+            datasParaAgendar.push({ data: new Date(dataCursor), horario: horarioSelecionado });
+            dataCursor = addWeeks(dataCursor, recorrenciaPersonalizada);
+          } else {
+            dataCursor = addWeeks(dataCursor, recorrenciaPersonalizada);
+          }
+
+          while (dataCursor <= limiteSerie) {
+            datasParaAgendar.push({ data: new Date(dataCursor), horario: horarioSelecionado });
+            dataCursor = addWeeks(dataCursor, recorrenciaPersonalizada);
+          }
         }
       }
-
-      const [hora, minuto] = horarioSelecionado.split(":").map(Number);
 
       const idSerieRecorrente =
         tipoRecorrencia !== "unico"
           ? `serie-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
           : null;
 
-      const agendamentos = datasParaAgendar.map((dataAgendada) => {
-        const datetimeStart = new Date(dataAgendada);
+      const agendamentos = datasParaAgendar.map((item) => {
+        const [hora, minuto] = item.horario.split(":").map(Number);
+        const datetimeStart = new Date(item.data);
         datetimeStart.setHours(hora, minuto, 0, 0);
         const datetimeEnd = new Date(datetimeStart.getTime() + tempoServico * 60 * 1000);
 
@@ -461,9 +532,9 @@ export const AppointmentDialog = ({
           servico: nomeServico,
           datetime_start: datetimeStart.toISOString(),
           datetime_end: datetimeEnd.toISOString(),
-          dia_agendado: format(dataAgendada, "yyyy-MM-dd"),
-          dia_agendado_formatado: format(dataAgendada, "dd 'de' MMMM 'de' yyyy", { locale: ptBR }),
-          hora_agendada: horarioSelecionado,
+          dia_agendado: format(item.data, "yyyy-MM-dd"),
+          dia_agendado_formatado: format(item.data, "dd 'de' MMMM 'de' yyyy", { locale: ptBR }),
+          hora_agendada: item.horario,
           hora_final: format(datetimeEnd, "HH:mm"),
           tempo_total_minutos: tempoServico,
           evento_recorrente: tipoRecorrencia !== "unico" ? "Sim" : "Não",
@@ -789,6 +860,17 @@ export const AppointmentDialog = ({
                       >
                         Personalizado (a cada X semanas)
                       </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={tipoRecorrencia === "dias" ? "default" : "outline"}
+                        onClick={() => {
+                          setTipoRecorrencia("dias");
+                          setConflitosDias([]);
+                        }}
+                      >
+                        A cada X dias
+                      </Button>
                     </div>
 
                     {tipoRecorrencia === "personalizado" && (
@@ -928,6 +1010,129 @@ export const AppointmentDialog = ({
                           Deixe vazio para usar o dia da semana selecionado. Serão criados horários em todos esses
                           dias da semana nos próximos 12 meses.
                         </p>
+                      </div>
+                    )}
+
+                    {tipoRecorrencia === "dias" && (
+                      <div className="space-y-3 mt-1">
+                        <div className="flex items-center gap-2">
+                          <span>A cada</span>
+                          <Input
+                            type="number"
+                            value={recorrenciaDias}
+                            onChange={(e) => {
+                              const parsed = parseInt(e.target.value, 10);
+                              if (!Number.isNaN(parsed) && parsed >= 1) {
+                                setRecorrenciaDias(Math.min(90, parsed));
+                                setConflitosDias([]);
+                              }
+                            }}
+                            min={1}
+                            max={90}
+                            className="w-20 h-8 text-sm text-center"
+                          />
+                          <span>dia(s)</span>
+                        </div>
+
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          onClick={handlePreviewDias}
+                          className="w-full"
+                        >
+                          Verificar conflitos com dias fechados
+                        </Button>
+
+                        {conflitosdias.length > 0 && (
+                          <div className="space-y-2 mt-2">
+                            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                              <p className="text-amber-800 text-xs font-medium mb-2">
+                                ⚠️ {conflitosdias.filter(c => !c.removido && !c.novaData).length} agendamento(s) caem em dias que a barbearia não abre (Domingo/Segunda):
+                              </p>
+                              <div className="space-y-2 max-h-40 overflow-y-auto">
+                                {conflitosdias.map((conflito, idx) => (
+                                  <div key={idx} className={cn(
+                                    "bg-card border rounded-md p-2 text-xs space-y-1",
+                                    conflito.removido ? "opacity-50 border-muted" : "border-amber-300"
+                                  )}>
+                                    <div className="flex items-center justify-between">
+                                      <span className="font-medium text-foreground">
+                                        {format(conflito.data, "dd/MM/yyyy")} ({conflito.diaSemana})
+                                      </span>
+                                      {!conflito.removido && !conflito.novaData && (
+                                        <span className="text-amber-600 text-[10px]">Pendente</span>
+                                      )}
+                                      {conflito.novaData && (
+                                        <span className="text-green-600 text-[10px]">Ajustado</span>
+                                      )}
+                                      {conflito.removido && (
+                                        <span className="text-muted-foreground text-[10px]">Removido</span>
+                                      )}
+                                    </div>
+                                    
+                                    {!conflito.removido && (
+                                      <div className="flex items-center gap-2 mt-1">
+                                        <Popover>
+                                          <PopoverTrigger asChild>
+                                            <Button variant="outline" size="sm" className="h-6 text-[10px] px-2">
+                                              {conflito.novaData 
+                                                ? format(conflito.novaData, "dd/MM") 
+                                                : "Alterar data"}
+                                            </Button>
+                                          </PopoverTrigger>
+                                          <PopoverContent className="w-auto p-0" align="start">
+                                            <CalendarComponent
+                                              mode="single"
+                                              selected={conflito.novaData || undefined}
+                                              onSelect={(date) => {
+                                                if (date) {
+                                                  atualizarConflitoDia(idx, { novaData: date });
+                                                }
+                                              }}
+                                              disabled={(date) => {
+                                                const dia = getDay(date);
+                                                return dia === 0 || dia === 1 || isBefore(date, new Date());
+                                              }}
+                                              locale={ptBR}
+                                              className="pointer-events-auto"
+                                            />
+                                          </PopoverContent>
+                                        </Popover>
+
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          className="h-6 text-[10px] px-2 text-destructive hover:text-destructive"
+                                          onClick={() => atualizarConflitoDia(idx, { removido: true })}
+                                        >
+                                          Remover
+                                        </Button>
+                                      </div>
+                                    )}
+
+                                    {conflito.removido && (
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-6 text-[10px] px-2"
+                                        onClick={() => atualizarConflitoDia(idx, { removido: false })}
+                                      >
+                                        Desfazer
+                                      </Button>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {conflitosdias.length === 0 && horarioSelecionado && (
+                          <p className="text-[10px] text-muted-foreground">
+                            Clique em "Verificar conflitos" para checar se algum agendamento cairá em dias fechados.
+                          </p>
+                        )}
                       </div>
                     )}
                   </div>
