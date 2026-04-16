@@ -860,6 +860,17 @@ export const AppointmentDialog = ({
                       >
                         Personalizado (a cada X semanas)
                       </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={tipoRecorrencia === "dias" ? "default" : "outline"}
+                        onClick={() => {
+                          setTipoRecorrencia("dias");
+                          setConflitosDias([]);
+                        }}
+                      >
+                        A cada X dias
+                      </Button>
                     </div>
 
                     {tipoRecorrencia === "personalizado" && (
