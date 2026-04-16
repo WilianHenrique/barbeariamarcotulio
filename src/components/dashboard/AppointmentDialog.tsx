@@ -419,8 +419,22 @@ export const AppointmentDialog = ({
           dataMesBase = addMonths(dataMesBase, 1);
         }
       } else if (tipoRecorrencia === "personalizado") {
+        const diaSemanaAlvo = diasSemanaSelecionados.length > 0 ? diasSemanaSelecionados[0] : null;
+        
         let dataCursor = new Date(inicioSerie);
-        dataCursor = addWeeks(dataCursor, recorrenciaPersonalizada);
+        
+        // Se um dia da semana foi selecionado, ajustar a primeira data para esse dia
+        if (diaSemanaAlvo !== null) {
+          const diaAtual = dataCursor.getDay();
+          let diff = diaSemanaAlvo - diaAtual;
+          if (diff <= 0) diff += 7;
+          dataCursor.setDate(dataCursor.getDate() + diff);
+          // A primeira ocorrência no dia selecionado
+          datasParaAgendar.push(new Date(dataCursor));
+          dataCursor = addWeeks(dataCursor, recorrenciaPersonalizada);
+        } else {
+          dataCursor = addWeeks(dataCursor, recorrenciaPersonalizada);
+        }
 
         while (dataCursor <= limiteSerie) {
           datasParaAgendar.push(new Date(dataCursor));
