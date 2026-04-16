@@ -1012,6 +1012,129 @@ export const AppointmentDialog = ({
                         </p>
                       </div>
                     )}
+
+                    {tipoRecorrencia === "dias" && (
+                      <div className="space-y-3 mt-1">
+                        <div className="flex items-center gap-2">
+                          <span>A cada</span>
+                          <Input
+                            type="number"
+                            value={recorrenciaDias}
+                            onChange={(e) => {
+                              const parsed = parseInt(e.target.value, 10);
+                              if (!Number.isNaN(parsed) && parsed >= 1) {
+                                setRecorrenciaDias(Math.min(90, parsed));
+                                setConflitosDias([]);
+                              }
+                            }}
+                            min={1}
+                            max={90}
+                            className="w-20 h-8 text-sm text-center"
+                          />
+                          <span>dia(s)</span>
+                        </div>
+
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          onClick={handlePreviewDias}
+                          className="w-full"
+                        >
+                          Verificar conflitos com dias fechados
+                        </Button>
+
+                        {conflitosdias.length > 0 && (
+                          <div className="space-y-2 mt-2">
+                            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                              <p className="text-amber-800 text-xs font-medium mb-2">
+                                ⚠️ {conflitosdias.filter(c => !c.removido && !c.novaData).length} agendamento(s) caem em dias que a barbearia não abre (Domingo/Segunda):
+                              </p>
+                              <div className="space-y-2 max-h-40 overflow-y-auto">
+                                {conflitosdias.map((conflito, idx) => (
+                                  <div key={idx} className={cn(
+                                    "bg-card border rounded-md p-2 text-xs space-y-1",
+                                    conflito.removido ? "opacity-50 border-muted" : "border-amber-300"
+                                  )}>
+                                    <div className="flex items-center justify-between">
+                                      <span className="font-medium text-foreground">
+                                        {format(conflito.data, "dd/MM/yyyy")} ({conflito.diaSemana})
+                                      </span>
+                                      {!conflito.removido && !conflito.novaData && (
+                                        <span className="text-amber-600 text-[10px]">Pendente</span>
+                                      )}
+                                      {conflito.novaData && (
+                                        <span className="text-green-600 text-[10px]">Ajustado</span>
+                                      )}
+                                      {conflito.removido && (
+                                        <span className="text-muted-foreground text-[10px]">Removido</span>
+                                      )}
+                                    </div>
+                                    
+                                    {!conflito.removido && (
+                                      <div className="flex items-center gap-2 mt-1">
+                                        <Popover>
+                                          <PopoverTrigger asChild>
+                                            <Button variant="outline" size="sm" className="h-6 text-[10px] px-2">
+                                              {conflito.novaData 
+                                                ? format(conflito.novaData, "dd/MM") 
+                                                : "Alterar data"}
+                                            </Button>
+                                          </PopoverTrigger>
+                                          <PopoverContent className="w-auto p-0" align="start">
+                                            <CalendarComponent
+                                              mode="single"
+                                              selected={conflito.novaData || undefined}
+                                              onSelect={(date) => {
+                                                if (date) {
+                                                  atualizarConflitoDia(idx, { novaData: date });
+                                                }
+                                              }}
+                                              disabled={(date) => {
+                                                const dia = getDay(date);
+                                                return dia === 0 || dia === 1 || isBefore(date, new Date());
+                                              }}
+                                              locale={ptBR}
+                                              className="pointer-events-auto"
+                                            />
+                                          </PopoverContent>
+                                        </Popover>
+
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          className="h-6 text-[10px] px-2 text-destructive hover:text-destructive"
+                                          onClick={() => atualizarConflitoDia(idx, { removido: true })}
+                                        >
+                                          Remover
+                                        </Button>
+                                      </div>
+                                    )}
+
+                                    {conflito.removido && (
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-6 text-[10px] px-2"
+                                        onClick={() => atualizarConflitoDia(idx, { removido: false })}
+                                      >
+                                        Desfazer
+                                      </Button>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {conflitosdias.length === 0 && horarioSelecionado && (
+                          <p className="text-[10px] text-muted-foreground">
+                            Clique em "Verificar conflitos" para checar se algum agendamento cairá em dias fechados.
+                          </p>
+                        )}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
