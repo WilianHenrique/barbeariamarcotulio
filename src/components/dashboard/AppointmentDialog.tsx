@@ -37,7 +37,18 @@ interface Servico {
   ordem: number;
 }
 
-type RecorrenciaType = "unico" | "semanal" | "mensal" | "personalizado";
+type RecorrenciaType = "unico" | "semanal" | "mensal" | "personalizado" | "dias";
+
+interface AgendamentoConflitoDia {
+  data: Date;
+  diaSemana: string;
+  motivo: "domingo" | "segunda";
+  novaData: Date | null;
+  novoHorario: string | null;
+  removido: boolean;
+}
+
+const NOMES_DIAS = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
 
 const formatarTelefone = (value: string) => {
   let numeros = value.replace(/\D/g, "");
