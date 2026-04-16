@@ -778,25 +778,60 @@ export const AppointmentDialog = ({
                     </div>
 
                     {tipoRecorrencia === "personalizado" && (
-                      <div className="flex items-center gap-2 mt-1">
-                        <span>A cada</span>
-                        <select
-                          className="w-16 h-8 rounded-md border border-border bg-card text-foreground text-sm text-center shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary cursor-pointer"
-                          value={recorrenciaPersonalizada}
-                          onChange={(e) => {
-                            const parsed = parseInt(e.target.value, 10);
-                            if (!Number.isNaN(parsed)) {
-                              setRecorrenciaPersonalizada(Math.min(4, Math.max(1, parsed)));
-                            }
-                          }}
-                        >
-                          {[1, 2, 3, 4].map((n) => (
-                            <option key={n} value={n} className="bg-card text-foreground">
-                              {n}
-                            </option>
-                          ))}
-                        </select>
-                        <span>semana(s)</span>
+                      <div className="space-y-3 mt-1">
+                        <div className="flex items-center gap-2">
+                          <span>A cada</span>
+                          <select
+                            className="w-16 h-8 rounded-md border border-border bg-card text-foreground text-sm text-center shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary cursor-pointer"
+                            value={recorrenciaPersonalizada}
+                            onChange={(e) => {
+                              const parsed = parseInt(e.target.value, 10);
+                              if (!Number.isNaN(parsed)) {
+                                setRecorrenciaPersonalizada(Math.min(4, Math.max(1, parsed)));
+                              }
+                            }}
+                          >
+                            {[1, 2, 3, 4].map((n) => (
+                              <option key={n} value={n} className="bg-card text-foreground">
+                                {n}
+                              </option>
+                            ))}
+                          </select>
+                          <span>semana(s)</span>
+                        </div>
+                        <div>
+                          <Label className="text-xs text-foreground">Dia da semana</Label>
+                          <div className="grid grid-cols-4 gap-2 mt-1">
+                            {[
+                              { label: "Seg", value: 1 },
+                              { label: "Ter", value: 2 },
+                              { label: "Qua", value: 3 },
+                              { label: "Qui", value: 4 },
+                              { label: "Sex", value: 5 },
+                              { label: "Sáb", value: 6 },
+                              { label: "Dom", value: 0 },
+                            ].map(({ label, value }) => (
+                              <button
+                                key={value}
+                                type="button"
+                                onClick={() => {
+                                  setDiasSemanaSelecionados([value]);
+                                }}
+                                className={cn(
+                                  "py-1.5 px-2 rounded-md text-xs font-medium transition-all",
+                                  diasSemanaSelecionados.includes(value)
+                                    ? "bg-primary text-primary-foreground"
+                                    : "bg-secondary/50 text-muted-foreground hover:bg-secondary",
+                                )}
+                              >
+                                {label}
+                              </button>
+                            ))}
+                          </div>
+                          <p className="text-[10px] text-muted-foreground mt-1">
+                            Deixe vazio para usar o dia da data selecionada.
+                          </p>
+                        </div>
                       </div>
                     )}
 
