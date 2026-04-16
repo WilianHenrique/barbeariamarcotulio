@@ -75,14 +75,32 @@ const Dashboard = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { navigate("/auth"); return; }
 
-      const { data, error } = await supabase
-        .from('agendamentos')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('datetime_start', { ascending: true });
+      // Paginar para buscar todos os agendamentos (limite padrão do Supabase é 1000)
+      let allData: Agendamento[] = [];
+      let from = 0;
+      const pageSize = 1000;
+      let hasMore = true;
 
-      if (error) throw error;
-      setAgendamentos(data || []);
+      while (hasMore) {
+        const { data, error } = await supabase
+          .from('agendamentos')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('datetime_start', { ascending: true })
+          .range(from, from + pageSize - 1);
+
+        if (error) throw error;
+        
+        if (data && data.length > 0) {
+          allData = [...allData, ...data];
+          from += pageSize;
+          hasMore = data.length === pageSize;
+        } else {
+          hasMore = false;
+        }
+      }
+
+      setAgendamentos(allData);
     } catch (error) {
       toast.error("Erro ao carregar agendamentos");
     } finally {
