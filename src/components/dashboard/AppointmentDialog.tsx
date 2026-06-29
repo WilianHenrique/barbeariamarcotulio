@@ -357,11 +357,11 @@ export const AppointmentDialog = ({
 
     while (dataCursor <= limiteSerie) {
       const diaSemana = getDay(dataCursor);
-      if (diaSemana === 0 || diaSemana === 1) {
+      if (isDiaFechado(diaSemana)) {
         conflitos.push({
           data: new Date(dataCursor),
           diaSemana: NOMES_DIAS[diaSemana],
-          motivo: diaSemana === 0 ? "domingo" : "segunda",
+          motivo: NOMES_DIAS[diaSemana].toLowerCase(),
           novaData: null,
           novoHorario: null,
           removido: false,
@@ -436,7 +436,7 @@ export const AppointmentDialog = ({
 
         while (dataCursor <= limiteSerie) {
           const diaSemana = getDay(dataCursor);
-          if (diaSemana === 0 || diaSemana === 1) {
+          if (isDiaFechado(diaSemana)) {
             // Procurar o conflito correspondente
             const conflito = conflitosdias[conflitoIdx];
             conflitoIdx++;
