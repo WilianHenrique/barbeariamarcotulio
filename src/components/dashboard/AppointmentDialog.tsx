@@ -12,6 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { PendingPaymentsAlert } from "@/components/dashboard/PendingPaymentsAlert";
+import { useDiasFuncionamento } from "@/hooks/useDiasFuncionamento";
 
 interface ClienteSugestao {
   nome_cliente: string;
@@ -42,7 +43,7 @@ type RecorrenciaType = "unico" | "semanal" | "mensal" | "personalizado" | "dias"
 interface AgendamentoConflitoDia {
   data: Date;
   diaSemana: string;
-  motivo: "domingo" | "segunda";
+  motivo: string;
   novaData: Date | null;
   novoHorario: string | null;
   removido: boolean;
@@ -122,6 +123,10 @@ export const AppointmentDialog = ({
   const [isLoading, setIsLoading] = useState(false);
   const [carregandoServicos, setCarregandoServicos] = useState(false);
   const sugestoesRef = useRef<HTMLDivElement | null>(null);
+  const { diasAbertos, diasFechados } = useDiasFuncionamento();
+
+  const isDiaFechado = (dia: number) => !diasAbertos.includes(dia);
+  const nomesDiasFechados = diasFechados.map((d) => NOMES_DIAS[d]).join("/") || "—";
 
   // Carregar serviços do banco
   useEffect(() => {
@@ -352,11 +357,11 @@ export const AppointmentDialog = ({
 
     while (dataCursor <= limiteSerie) {
       const diaSemana = getDay(dataCursor);
-      if (diaSemana === 0 || diaSemana === 1) {
+      if (isDiaFechado(diaSemana)) {
         conflitos.push({
           data: new Date(dataCursor),
           diaSemana: NOMES_DIAS[diaSemana],
-          motivo: diaSemana === 0 ? "domingo" : "segunda",
+          motivo: NOMES_DIAS[diaSemana].toLowerCase(),
           novaData: null,
           novoHorario: null,
           removido: false,
@@ -431,7 +436,7 @@ export const AppointmentDialog = ({
 
         while (dataCursor <= limiteSerie) {
           const diaSemana = getDay(dataCursor);
-          if (diaSemana === 0 || diaSemana === 1) {
+          if (isDiaFechado(diaSemana)) {
             // Procurar o conflito correspondente
             const conflito = conflitosdias[conflitoIdx];
             conflitoIdx++;
@@ -1048,7 +1053,7 @@ export const AppointmentDialog = ({
                           <div className="space-y-2 mt-2">
                             <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
                               <p className="text-amber-800 text-xs font-medium mb-2">
-                                ⚠️ {conflitosdias.filter(c => !c.removido && !c.novaData).length} agendamento(s) caem em dias que a barbearia não abre (Domingo/Segunda):
+                                ⚠️ {conflitosdias.filter(c => !c.removido && !c.novaData).length} agendamento(s) caem em dias que a barbearia não abre ({nomesDiasFechados}):
                               </p>
                               <div className="space-y-2 max-h-40 overflow-y-auto">
                                 {conflitosdias.map((conflito, idx) => (
@@ -1092,7 +1097,7 @@ export const AppointmentDialog = ({
                                               }}
                                               disabled={(date) => {
                                                 const dia = getDay(date);
-                                                return dia === 0 || dia === 1 || isBefore(date, new Date());
+                                                return isDiaFechado(dia) || isBefore(date, new Date());
                                               }}
                                               locale={ptBR}
                                               className="pointer-events-auto"
