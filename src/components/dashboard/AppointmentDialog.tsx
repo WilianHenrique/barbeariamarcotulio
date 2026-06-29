@@ -12,6 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { PendingPaymentsAlert } from "@/components/dashboard/PendingPaymentsAlert";
+import { useDiasFuncionamento } from "@/hooks/useDiasFuncionamento";
 
 interface ClienteSugestao {
   nome_cliente: string;
@@ -42,7 +43,7 @@ type RecorrenciaType = "unico" | "semanal" | "mensal" | "personalizado" | "dias"
 interface AgendamentoConflitoDia {
   data: Date;
   diaSemana: string;
-  motivo: "domingo" | "segunda";
+  motivo: string;
   novaData: Date | null;
   novoHorario: string | null;
   removido: boolean;
@@ -122,6 +123,10 @@ export const AppointmentDialog = ({
   const [isLoading, setIsLoading] = useState(false);
   const [carregandoServicos, setCarregandoServicos] = useState(false);
   const sugestoesRef = useRef<HTMLDivElement | null>(null);
+  const { diasAbertos, diasFechados } = useDiasFuncionamento();
+
+  const isDiaFechado = (dia: number) => !diasAbertos.includes(dia);
+  const nomesDiasFechados = diasFechados.map((d) => NOMES_DIAS[d]).join("/") || "—";
 
   // Carregar serviços do banco
   useEffect(() => {
