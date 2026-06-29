@@ -1053,7 +1053,7 @@ export const AppointmentDialog = ({
                           <div className="space-y-2 mt-2">
                             <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
                               <p className="text-amber-800 text-xs font-medium mb-2">
-                                ⚠️ {conflitosdias.filter(c => !c.removido && !c.novaData).length} agendamento(s) caem em dias que a barbearia não abre (Domingo/Segunda):
+                                ⚠️ {conflitosdias.filter(c => !c.removido && !c.novaData).length} agendamento(s) caem em dias que a barbearia não abre ({nomesDiasFechados}):
                               </p>
                               <div className="space-y-2 max-h-40 overflow-y-auto">
                                 {conflitosdias.map((conflito, idx) => (
@@ -1097,7 +1097,7 @@ export const AppointmentDialog = ({
                                               }}
                                               disabled={(date) => {
                                                 const dia = getDay(date);
-                                                return dia === 0 || dia === 1 || isBefore(date, new Date());
+                                                return isDiaFechado(dia) || isBefore(date, new Date());
                                               }}
                                               locale={ptBR}
                                               className="pointer-events-auto"
