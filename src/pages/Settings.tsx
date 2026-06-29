@@ -3,11 +3,22 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft, Bell, Save } from "lucide-react";
+import { ArrowLeft, Bell, Save, CalendarDays, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { GerenciadorServicos } from "@/components/dashboard/GerenciadorServicos";
 import { supabase } from "@/integrations/supabase/client";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { NOMES_DIAS, DEFAULT_DIAS_ABERTOS } from "@/hooks/useDiasFuncionamento";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
+
+interface AgendamentoConflito {
+  id: string;
+  nome_cliente: string;
+  datetime_start: string;
+  servico: string;
+}
 
 const Settings = () => {
   const navigate = useNavigate();
@@ -16,8 +27,17 @@ const Settings = () => {
   const [loadingNotificationUrl, setLoadingNotificationUrl] = useState(true);
   const [savingNotificationUrl, setSavingNotificationUrl] = useState(false);
 
+  // Dias de funcionamento
+  const [diasAbertos, setDiasAbertos] = useState<number[]>(DEFAULT_DIAS_ABERTOS);
+  const [diasOriginais, setDiasOriginais] = useState<number[]>(DEFAULT_DIAS_ABERTOS);
+  const [loadingDias, setLoadingDias] = useState(true);
+  const [savingDias, setSavingDias] = useState(false);
+  const [conflitosDias, setConflitosDias] = useState<AgendamentoConflito[]>([]);
+  const [showConflitosDialog, setShowConflitosDialog] = useState(false);
+
   useEffect(() => {
     loadNotificationUrl();
+    loadDiasFuncionamento();
   }, []);
 
   const loadNotificationUrl = async () => {
