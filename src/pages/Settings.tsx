@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft, Bell, Save, CalendarDays, AlertTriangle } from "lucide-react";
+import { ArrowLeft, Bell, Save, CalendarDays, AlertTriangle, Link2, Copy, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { GerenciadorServicos } from "@/components/dashboard/GerenciadorServicos";
@@ -26,6 +26,9 @@ const Settings = () => {
   const [originalNotificationUrl, setOriginalNotificationUrl] = useState("");
   const [loadingNotificationUrl, setLoadingNotificationUrl] = useState(true);
   const [savingNotificationUrl, setSavingNotificationUrl] = useState(false);
+  const [publicToken, setPublicToken] = useState("");
+  const [loadingPublicLink, setLoadingPublicLink] = useState(true);
+  const [savingPublicLink, setSavingPublicLink] = useState(false);
 
   // Dias de funcionamento
   const [diasAbertos, setDiasAbertos] = useState<number[]>(DEFAULT_DIAS_ABERTOS);
@@ -38,7 +41,84 @@ const Settings = () => {
   useEffect(() => {
     loadNotificationUrl();
     loadDiasFuncionamento();
+    loadPublicLink();
   }, []);
+
+  const gerarTokenPublico = () => crypto.randomUUID().replace(/-/g, "");
+
+  const salvarPublicToken = async (token: string) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      toast.error('Usuário não autenticado');
+      return;
+    }
+
+    const { error } = await supabase
+      .from('configuracoes')
+      .upsert({
+        user_id: user.id,
+        chave: 'public_availability_token',
+        valor: token,
+      }, { onConflict: 'user_id,chave' });
+
+    if (error) throw error;
+  };
+
+  const loadPublicLink = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from('configuracoes')
+        .select('valor')
+        .eq('user_id', user.id)
+        .eq('chave', 'public_availability_token')
+        .maybeSingle();
+
+      if (error) throw error;
+
+      if (data?.valor) {
+        setPublicToken(data.valor);
+      } else {
+        const novoToken = gerarTokenPublico();
+        await salvarPublicToken(novoToken);
+        setPublicToken(novoToken);
+      }
+    } catch (err) {
+      console.error('Erro ao carregar link público:', err);
+      toast.error('Erro ao carregar link público');
+    } finally {
+      setLoadingPublicLink(false);
+    }
+  };
+
+  const regenerarPublicLink = async () => {
+    setSavingPublicLink(true);
+    try {
+      const novoToken = gerarTokenPublico();
+      await salvarPublicToken(novoToken);
+      setPublicToken(novoToken);
+      toast.success('Novo link público gerado com sucesso!');
+    } catch (err) {
+      console.error('Erro ao gerar novo link público:', err);
+      toast.error('Erro ao gerar novo link público');
+    } finally {
+      setSavingPublicLink(false);
+    }
+  };
+
+  const copiarPublicLink = async () => {
+    if (!publicToken) return;
+    const base = window.location.origin;
+    const url = `${base}/agenda-publica/${publicToken}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      toast.success('Link copiado!');
+    } catch {
+      toast.error('Não foi possível copiar o link');
+    }
+  };
 
   const loadNotificationUrl = async () => {
     try {
@@ -223,6 +303,8 @@ const Settings = () => {
     diasAbertos.length !== diasOriginais.length ||
     diasAbertos.some((d, i) => d !== diasOriginais[i]);
 
+  const publicLink = publicToken ? `${window.location.origin}/agenda-publica/${publicToken}` : "";
+
   return (
     <div className="min-h-screen bg-background p-6">
       <div className="max-w-4xl mx-auto space-y-6">
@@ -295,6 +377,49 @@ const Settings = () => {
                     Você tem alterações não salvas
                   </p>
                 )}
+              </>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Link público de horários */}
+        <Card className="barber-card border-primary/20">
+          <CardHeader className="border-b border-primary/10">
+            <CardTitle className="text-xl font-display text-primary flex items-center gap-2">
+              <Link2 className="h-5 w-5" />
+              Link Público de Horários
+            </CardTitle>
+            <CardDescription className="text-muted-foreground">
+              Compartilhe este link para que seus clientes vejam os horários reservados e disponíveis do dia, sem login.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="pt-6 space-y-3">
+            {loadingPublicLink ? (
+              <div className="flex items-center justify-center py-4">
+                <div className="animate-spin h-5 w-5 border-2 border-primary border-t-transparent rounded-full" />
+              </div>
+            ) : (
+              <>
+                <Input
+                  readOnly
+                  value={publicLink}
+                  className="font-mono text-sm bg-secondary border-primary/20"
+                />
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <Button onClick={copiarPublicLink} className="w-full sm:w-auto">
+                    <Copy className="h-4 w-4 mr-2" />
+                    Copiar link
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={regenerarPublicLink}
+                    disabled={savingPublicLink}
+                    className="w-full sm:w-auto"
+                  >
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    {savingPublicLink ? 'Gerando...' : 'Gerar novo link'}
+                  </Button>
+                </div>
               </>
             )}
           </CardContent>
