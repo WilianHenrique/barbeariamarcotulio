@@ -9,7 +9,7 @@ const corsHeaders = {
 const DEFAULT_DIAS_ABERTOS = [2, 3, 4, 5, 6];
 const HORA_INICIO = 7;
 const HORA_FIM = 20;
-const INTERVALO_MINUTOS = 30;
+const INTERVALO_MINUTOS = 15;
 
 const gerarSlots = () => {
   const slots: string[] = [];
