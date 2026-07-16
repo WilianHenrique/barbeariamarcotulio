@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
-import { format, startOfDay } from "date-fns";
+import { addDays, format, isPast, isToday, startOfDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Calendar as CalendarIcon, Clock3 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -69,15 +69,39 @@ const PublicAvailability = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, selectedDate]);
 
+  const slotParaMinutos = (slot: string) => {
+    const [hh, mm] = slot.split(":").map(Number);
+    return hh * 60 + mm;
+  };
+
+  const agoraEmMinutos = new Date().getHours() * 60 + new Date().getMinutes();
+
+  const slotsVisiveis = useMemo(() => {
+    if (isPast(startOfDay(selectedDate)) && !isToday(selectedDate)) {
+      return [];
+    }
+
+    if (!isToday(selectedDate)) {
+      return slots;
+    }
+
+    return slots.filter((slot) => slotParaMinutos(slot) >= agoraEmMinutos);
+  }, [selectedDate, slots, agoraEmMinutos]);
+
+  const ocupadosVisiveis = useMemo(
+    () => horariosOcupados.filter((slot) => slotsVisiveis.includes(slot)),
+    [horariosOcupados, slotsVisiveis]
+  );
+
   const horariosDisponiveis = useMemo(
-    () => slots.filter((slot) => !horariosOcupados.includes(slot)),
-    [slots, horariosOcupados]
+    () => slotsVisiveis.filter((slot) => !ocupadosVisiveis.includes(slot)),
+    [slotsVisiveis, ocupadosVisiveis]
   );
 
   const periodoLabel = useMemo(() => {
-    if (!slots.length) return "";
-    return `${slots[0]} às ${slots[slots.length - 1]}`;
-  }, [slots]);
+    if (!slotsVisiveis.length) return "";
+    return `${slotsVisiveis[0]} às ${slotsVisiveis[slotsVisiveis.length - 1]}`;
+  }, [slotsVisiveis]);
 
   return (
     <div className="min-h-screen bg-background p-4 sm:p-6">
@@ -113,10 +137,20 @@ const PublicAvailability = () => {
               </Popover>
             </div>
 
+            <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+              <span>Clique no seletor de data para escolher o dia.</span>
+              <Button variant="ghost" size="sm" onClick={() => setSelectedDate(new Date())}>
+                Hoje
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => setSelectedDate(addDays(new Date(), 1))}>
+                Amanhã
+              </Button>
+            </div>
+
             {periodoLabel && (
               <div className="text-sm text-muted-foreground flex items-center gap-2">
                 <Clock3 className="h-4 w-4" />
-                Janela de atendimento: {periodoLabel}
+                Horários visíveis a partir de agora: {periodoLabel}
               </div>
             )}
           </CardHeader>
@@ -133,16 +167,23 @@ const PublicAvailability = () => {
                 <Badge variant="secondary" className="text-sm">Fechado neste dia</Badge>
                 <p className="text-muted-foreground">A barbearia não atende nesta data.</p>
               </div>
+            ) : !slotsVisiveis.length ? (
+              <div className="text-center py-16 space-y-2">
+                <Badge variant="secondary" className="text-sm">Sem horários para exibir</Badge>
+                <p className="text-muted-foreground">
+                  Para esta data, não há horários futuros disponíveis.
+                </p>
+              </div>
             ) : (
               <div className="space-y-5">
                 <div className="flex flex-wrap gap-3 text-sm">
-                  <Badge variant="secondary" className="px-3 py-1">Reservados: {horariosOcupados.length}</Badge>
+                  <Badge variant="secondary" className="px-3 py-1">Reservados: {ocupadosVisiveis.length}</Badge>
                   <Badge variant="outline" className="px-3 py-1">Disponíveis: {horariosDisponiveis.length}</Badge>
                 </div>
 
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2">
-                  {slots.map((slot) => {
-                    const ocupado = horariosOcupados.includes(slot);
+                  {slotsVisiveis.map((slot) => {
+                    const ocupado = ocupadosVisiveis.includes(slot);
                     return (
                       <div
                         key={slot}
