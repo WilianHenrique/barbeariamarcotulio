@@ -1,73 +1,57 @@
-# Welcome to your Lovable project
+# Remix of Barbershop Sync
 
-## Project info
+Preciso que você crie um sistema para uma Barbearia, o sistema é responsável pelas notificações dos agendamentos realizados.
 
-**URL**: https://lovable.dev/projects/7f490022-8d27-412f-8dab-3438e7840584
+Os agendamentos são feitos atravéz do google calendário, toda vez que é feito um agendamento, alteração ou cancelamento é recebido o evento atravéz do N8N, e por lá ele irá disparar um Webhook aqui para este sistema contendo as informações do agendamento.
 
-## How can I edit this code?
+Segue um exemplo de como será enviado aqui para você quando for feito um agendamento:
+[
+  {
+    "id_evento": "6vdhs47ekfvib72beglhlib0on",
+    "Nome_cliente": "test do wilian 233",
+    "dateTime-start": "2025-11-11T13:30:00-03:00",
+    "dateTime-end": "2025-11-11T14:30:00-03:00",
+    "Dia_agendado_formatado": "11/11/2025",
+    "Dia_agendado": "2025-11-04",
+    "Hora_agendada": "13:30",
+    "Hora_final": "14:30",
+    "Link_evento": "https://www.google.com/calendar/event?eid=NnZkaHM0N2VrZnZpYjcyYmVnbGhsaWIwb25fMjAyNTExMTFUMTYzMDAwWiB3aWxpYW5tbDg4MjJAbQ",
+    "servico": "cabelo + barba",
+    "tempo_total_minutos": "60",
+    "Status_Evento": "Evento criado"
+    "EventoRecorrente": "Não"
+  }
+]
 
-There are several ways of editing your application.
+Com isso, você deve criar um banco de dados que irá armazenar os agendamentos que estão sendo realizados.
 
-**Use Lovable**
+Este sistema será responsável por disparar 2 webhooks para o endpoint: https://automacoes.federalassociadoscadastro.com/webhook/agendamentos_marco_tulio contendo todas as informações do usuário enviadas anteriormente porém vendo qual seria a notificação. Quando faltar 24 horas para o evento envie: "Notificação de 24 horas" ou se caso faltar 1 hora para o evento envie "Notificação de 1 hora".
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/7f490022-8d27-412f-8dab-3438e7840584) and start prompting.
+Ou seja, o sistema com base no horário do evento fará esse disparo 24 horas antes ou 1 hora antes.
 
-Changes made via Lovable will be committed automatically to this repo.
+Crie um sistema com login e senha para que outras pessoas não possam ter acesso.
 
-**Use your preferred IDE**
+Crie um visual de barbearia e mostrando as tabelas dos agendados e quanto tempo falta para enviar a mensagem de notificação.
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+This project was built with [Lovable](https://lovable.dev).
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+**Live app**: https://barbeariamarcotulio.lovable.app
 
-Follow these steps:
+## Build with Lovable
+
+Continue developing this project in the [Lovable editor](https://lovable.dev/projects/baac2b9f-a38d-4c6a-942e-5599280952fe).
+
+- **Ship faster**: describe what you want to build and Lovable handles the code.
+- **Stay in sync**: every change made in Lovable is committed straight to this repository.
+- **Full ownership**: this code is yours. Push to `main` on GitHub and your changes sync back into Lovable, ready for your next prompt.
+
+## Development
+
+Prefer working locally? You need Node.js and npm — [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating).
 
 ```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
+git clone <this-repository-url>
+cd <repository-name>
 npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
 npm run dev
 ```
-
-**Edit a file directly in GitHub**
-
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
-
-**Use GitHub Codespaces**
-
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
-
-## What technologies are used for this project?
-
-This project is built with:
-
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/7f490022-8d27-412f-8dab-3438e7840584) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
